@@ -9,7 +9,12 @@
       "@/assets/*": [
         "./assets/*"
       ]
-    }
+    },
+    "types": [
+      "react",
+      "react-native",
+      "node"
+    ]
   },
   "include": [
     "**/*.ts",

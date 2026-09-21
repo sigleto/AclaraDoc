@@ -33,7 +33,7 @@ test("SDK request sends inline data, structured schema and system instructions w
     calls++;
     assert.equal(params.model, "gemini-3.1-flash-lite");
     assert.equal(params.config?.responseMimeType, "application/json");
-    assert.deepEqual(params.config?.thinkingConfig, { thinkingLevel: "MINIMAL" });
+    assert.equal(params.config?.thinkingConfig, undefined);
     assert.equal(params.config?.temperature, undefined);
     assert.equal(params.config?.maxOutputTokens, 6000);
     assert.ok(params.config?.responseJsonSchema);

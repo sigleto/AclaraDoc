@@ -29,7 +29,7 @@ test("installed SDK serializes the request and parses a response without externa
   t.mock.method(globalThis, "fetch", async (_input: unknown, init: RequestInit) => {
     calls++;
     const payload = JSON.parse(String(init.body));
-    assert.equal(payload.generationConfig.thinkingConfig.thinkingLevel, "MINIMAL");
+    assert.equal(payload.generationConfig.thinkingConfig, undefined);
     assert.equal(payload.generationConfig.responseMimeType, "application/json");
     assert.ok(payload.generationConfig.responseJsonSchema);
     assert.equal(payload.tools, undefined);

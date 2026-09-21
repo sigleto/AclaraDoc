@@ -27,7 +27,7 @@ El consentimiento se conserva únicamente durante la sesión. Cancelar ese aviso
 
 El 21/09/2026 se autorizó sustituir `gemini-2.5-flash-lite` por `gemini-3.1-flash-lite`, tras confirmar el usuario que su proyecto no tiene facturación. La lista permitida sigue conteniendo un único modelo. Para instalaciones anteriores, cambia solo `GEMINI_MODEL=gemini-3.1-flash-lite` en `backend/.env` y reinicia el backend. La confirmación del usuario no equivale a una comprobación técnica de facturación.
 
-La petición usa `thinkingLevel=MINIMAL`, conserva el límite de 6000 tokens de salida y deja la temperatura predeterminada recomendada para Gemini 3. No se habilitan herramientas, búsquedas, caché ni Files API. Referencia: [guía de migración de Gemini 3](https://ai.google.dev/gemini-api/docs/gemini-3).
+La petición conserva el límite de 6000 tokens de salida y usa la temperatura y el razonamiento predeterminados del modelo. Envía un esquema JSON simplificado (campos, tipos, listas, enumeraciones y valores nulos); el contrato Zod completo valida después longitudes, límites de listas, fechas y coherencia. Esta combinación se comprobó con una llamada real expresamente autorizada, solo con texto ficticio. No se habilitan herramientas, búsquedas, caché ni Files API. Referencia: [guía de migración de Gemini 3](https://ai.google.dev/gemini-api/docs/gemini-3).
 
 No se ha creado ninguna clave ni habilitado facturación como parte de este proyecto.
 

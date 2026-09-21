@@ -1,5 +1,19 @@
 # Verificación de la segunda fase — 20 de septiembre de 2026
 
+## Configuración aceptada por Google — 21 de septiembre de 2026
+
+El usuario autorizó hasta dos llamadas adicionales, sin adjuntos ni reintentos, deteniéndose si fallaba la primera. Ambas se ejecutaron con el SDK oficial, el modelo permitido y texto ficticio: la petición mínima fue aceptada; la segunda, con el esquema simplificado, las instrucciones del sistema de la app y un máximo de 6000 tokens, también fue aceptada y su respuesta superó `validateAnalysis`. No se imprimieron respuestas completas, claves ni errores internos. Se eliminó el script temporal. No se hicieron más llamadas reales.
+
+Se aplicó exactamente esa combinación al generador del backend: esquema derivado del contrato compartido, limitado a campos, tipos, elementos, enumeraciones, obligatoriedad y alternativas nulas, sin configuración explícita de razonamiento. La validación Zod completa sigue ejecutándose después de la generación y en el cliente, conservando límites, fechas válidas y coherencia. La comparación prueba que esa combinación funciona; no identifica por separado cuál de los parámetros anteriores provocaba el 400. La cuenta/modelo aceptó las llamadas en ese momento, pero no se verificó técnicamente facturación ni cuota y queda pendiente el recorrido con foto en el móvil.
+
+`npm run verify` aprobado (13 pruebas de cliente y 22 de backend), incluidas preservación de campos y rechazo local de longitudes/listas/fechas/coherencia inválidas. `npm run export:all`, `npm run build --workspace backend` y Expo Doctor (21/21) aprobados. La suite automatizada usa proveedor/red sustituidos; Expo se ejecutó con `EXPO_NO_DOTENV=1`. No se activó facturación ni se cambió el modelo.
+
+## Diagnóstico real autorizado — 21 de septiembre de 2026
+
+Con autorización explícita para una única llamada, se ejecutó `generateContent` mediante `@google/genai` con `gemini-3.1-flash-lite`, los mismos parámetros/esquema de la app y un texto ficticio de biblioteca, sin adjuntos. Se mantuvieron un único intento y el timeout de 45 segundos. Google devolvió HTTP 400 con una categoría genérica de argumento inválido; no se identificó un campo concreto. Solo se mostró esa clasificación acotada, sin claves, respuesta completa ni mensajes internos. El archivo temporal del diagnóstico se eliminó tras ejecutarlo.
+
+Este resultado reproduce el rechazo sin cámara ni archivos, pero no distingue todavía entre restricciones de cuenta/modelo y formato de la solicitud. No demuestra que el esquema sea la causa ni verifica facturación o cuota. No se realizó una segunda llamada ni se cambió el modelo. Las comprobaciones automatizadas de las secciones siguientes siguen usando proveedores sustituidos.
+
 ## Diagnóstico de errores del proveedor — 21 de septiembre de 2026
 
 El mensaje genérico de indisponibilidad ocultaba tanto rechazos HTTP 400 como errores temporales de Google. Se añadieron categorías públicas fijas para petición rechazada, esquema rechazado, nivel gratuito no disponible y fallos 500/502/503. Los textos internos del proveedor solo se inspeccionan en memoria para clasificar un 400; no se registran ni se envían al cliente. El frontend usa su propia lista de mensajes permitidos.

@@ -1,23 +1,23 @@
+export type {
+  AnalysisResult,
+  Analysis,
+  Statement,
+} from "../../shared/analysis";
 export interface DocumentPage {
   id: string;
   uri: string;
-  kind: 'image' | 'pdf';
+  kind: "image" | "pdf";
   name: string;
-  /** null for a whole PDF whose page count has not been read. */
+  mimeType?: string;
+  size?: number;
   pageCount: number | null;
 }
-export interface SelectedDocument { id: string; createdAt: string; pages: DocumentPage[] }
-export interface DetectedDeadline { id: string; description: string; date: string | null; requiresVerification: boolean }
-export interface RecommendedAction { id: string; description: string; priority: 'high' | 'normal' }
-export interface AnalysisResult {
+export interface SelectedDocument {
   id: string;
   createdAt: string;
-  simulated: true;
-  summary: string;
-  issuer: string;
-  communicationType: string;
-  actions: RecommendedAction[];
-  deadlines: DetectedDeadline[];
-  consequences: string;
-  confidence: { level: 'unavailable'; explanation: string };
+  pages: DocumentPage[];
 }
+export type DetectedDeadline =
+  import("../../shared/analysis").Analysis["plazos"][number];
+export type RecommendedAction =
+  import("../../shared/analysis").Analysis["accionesRecomendadas"][number];

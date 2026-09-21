@@ -1,4 +1,73 @@
-import { Card, Copy, Heading, Notice, Screen, Title } from '../components/ui';
+import { Card, Copy, Heading, Notice, Screen, Title } from "../components/ui";
+import { CONSENT_TEXT } from "../../shared/analysis";
 export default function Privacy() {
-  return <Screen><Title>Tu documento, bajo tu control</Title><Notice /><Card><Heading>Qué hace esta versión</Heading><Copy>AclaraDoc es un prototipo independiente. No representa a ninguna administración. El análisis es un ejemplo fijo: no hay OCR, lectura del PDF ni conexión con inteligencia artificial. No detecta fechas ni plazos reales.</Copy></Card><Card><Heading>Qué se guarda</Heading><Copy>Solo se guardan los últimos 50 resultados de ejemplo localmente. No se conservan imágenes, PDF, rutas ni nombres de archivos en el historial. Puedes borrar todos los resultados desde Historial.</Copy><Copy>El almacenamiento local no está cifrado por la aplicación. Quien tenga acceso a tu dispositivo podría acceder a los resultados.</Copy></Card><Card><Heading>Archivos temporales</Heading><Copy>La selección permanece en memoria durante la revisión. Las copias temporales de imágenes creadas por el selector se eliminan al quitar adjuntos, descartar o terminar el análisis; las que queden tras un cierre inesperado se limpian al siguiente inicio. Los archivos originales de tu galería o proveedor no se eliminan. Los PDF se referencian sin copiarlos al historial.</Copy></Card><Card><Heading>Sin servidores ni pagos</Heading><Copy>No subimos documentos ni resultados. No hay cuentas, claves API, analítica ni servicios de pago. Si eliges archivos de un proveedor en la nube, el selector del sistema puede descargarlos desde ese proveedor.</Copy></Card><Card><Heading>Comprueba siempre el original</Heading><Copy>Verifica el contenido, las fechas, los requisitos y las consecuencias con el organismo emisor antes de actuar. Este prototipo no ofrece asesoramiento jurídico ni sustituye una comunicación oficial.</Copy></Card></Screen>;
+  return (
+    <Screen>
+      <Title>Tu documento, bajo tu control</Title>
+      <Notice />
+      <Card>
+        <Heading>Análisis y consentimiento</Heading>
+        <Copy>{CONSENT_TEXT}</Copy>
+        <Copy>
+          No se anonimiza el archivo antes del envío. Oculta tú los datos
+          sensibles antes de seleccionarlo. Las instrucciones al modelo y los
+          filtros de salida no garantizan detectar todos los datos personales.
+        </Copy>
+      </Card>
+      <Card>
+        <Heading>Recorrido del documento</Heading>
+        <Copy>
+          Con el servicio activado, la aplicación envía los archivos a tu
+          backend local y este a Gemini. No hay base de datos ni archivos en
+          disco en el backend: se procesan temporalmente en memoria y se liberan
+          al terminar o ante un error. Google aplica sus propias condiciones y
+          retención; AclaraDoc no puede borrar los datos ya recibidos por
+          Google.
+        </Copy>
+        <Copy>
+          Cancelar detiene la espera y solicita abortar el envío, pero no
+          garantiza retirar lo ya enviado ni recuperar la cuota consumida. Las
+          pruebas por HTTP deben realizarse solo en una red local de confianza y
+          con documentos ficticios o previamente ocultados.
+        </Copy>
+      </Card>
+      <Card>
+        <Heading>Qué se guarda</Heading>
+        <Copy>
+          El resultado permanece en memoria hasta que pulses Guardar resultado.
+          El historial conserva como máximo 50 resultados localmente, sin
+          adjuntos, nombres de archivo ni rutas. Puedes borrarlos desde
+          Historial. No está cifrado por la aplicación y un resultado puede
+          contener información sensible.
+        </Copy>
+      </Card>
+      <Card>
+        <Heading>Copias temporales</Heading>
+        <Copy>
+          Las copias de los selectores de imágenes y PDF se eliminan al quitar
+          adjuntos, descartar y al finalizar cualquier intento de análisis,
+          incluido error o cancelación. Tras un cierre inesperado se limpian al
+          siguiente inicio. Si falla la limpieza se muestra un aviso. Nunca se
+          borran tus originales de la galería o del proveedor.
+        </Copy>
+      </Card>
+      <Card>
+        <Heading>Modo simulado y límites</Heading>
+        <Copy>
+          Sin dirección de backend se usa un mock local que no envía archivos.
+          El backend también puede configurarse en mock y no llama a Google. No
+          hay cambio automático de modelo ni reintentos ante cuota agotada. La
+          cuenta de Gemini debe mantenerse sin facturación habilitada.
+        </Copy>
+      </Card>
+      <Card>
+        <Heading>Comprueba siempre el original</Heading>
+        <Copy>
+          Verifica contenido, fechas, requisitos y consecuencias con el
+          organismo emisor. Las respuestas pueden ser incorrectas o incompletas
+          y no sustituyen asesoramiento profesional.
+        </Copy>
+      </Card>
+    </Screen>
+  );
 }

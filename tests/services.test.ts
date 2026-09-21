@@ -1,35 +1,103 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { analyzeDocument } from '../src/services/analysis';
-import { decodeHistory, encodeHistory } from '../src/services/history';
-import type { SelectedDocument } from '../src/types/document';
-const document: SelectedDocument = { id: 'test', createdAt: new Date().toISOString(), pages: [
-  { id: '1', uri: 'file:///private/secret.jpg', name: 'private-name.jpg', kind: 'image', pageCount: 1 },
-  { id: '2', uri: 'content://private/document.pdf', name: 'private-name.pdf', kind: 'pdf', pageCount: null },
-] };
-test('simulator supports mixed multipage input and does not access URIs', async () => {
-  const result = await analyzeDocument(document);
-  assert.equal(result.simulated, true);
-  assert.equal(result.confidence.level, 'unavailable');
-  assert.equal(result.deadlines[0].date, null);
-  assert.ok(result.actions.length);
-  assert.ok(!JSON.stringify(result).includes('private'));
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  mockAnalysis,
+  validateAnalysis,
+  LEGAL_NOTICE,
+  type AnalysisResult,
+} from "../shared/analysis";
+import { decodeHistory, encodeHistory } from "../src/services/history";
+const result: AnalysisResult = {
+  id: "test",
+  createdAt: new Date().toISOString(),
+  simulated: true,
+  analysis: mockAnalysis(),
+};
+
+test("mock is explicitly fictional without dates or identifiers", () => {
+  assert.equal(result.analysis.nivelConfianza, "bajo");
+  assert.deepEqual(result.analysis.plazos, []);
+  assert.match(result.analysis.advertencias[0], /Simulación/);
 });
-test('empty selections cannot be analyzed', async () => {
-  await assert.rejects(analyzeDocument({ ...document, pages: [] }));
-});
-test('persistence strips attachments and unknown fields even when nested', async () => {
-  const result = await analyzeDocument(document);
-  const contaminated = { ...result, pages: document.pages, uri: 'private', actions: result.actions.map(a => ({ ...a, uri: 'private' })) };
+test("history allowlist strips attachments and unknown nested fields", () => {
+  const contaminated = {
+    ...result,
+    uri: "private",
+    pages: ["private"],
+    analysis: {
+      ...result.analysis,
+      uri: "private",
+      accionesRecomendadas: result.analysis.accionesRecomendadas.map((a) => ({
+        ...a,
+        uri: "private",
+      })),
+    },
+  };
   const encoded = encodeHistory([contaminated]);
-  assert.ok(!encoded.includes('private'));
+  assert.ok(!encoded.includes("private"));
   assert.deepEqual(decodeHistory(encoded), [result]);
 });
-test('history handles empty, corrupt and malformed storage', () => {
+test("empty, corrupt and malformed storage", () => {
   assert.deepEqual(decodeHistory(null), []);
-  for (const raw of ['invalid', '{}', '[null]', '[{"simulated":true}]']) assert.throws(() => decodeHistory(raw));
+  for (const raw of ["invalid", "{}", "[null]", '[{"simulated":true}]'])
+    assert.throws(() => decodeHistory(raw));
 });
-test('history keeps at most 50 results', async () => {
-  const result = await analyzeDocument(document);
-  assert.equal(decodeHistory(encodeHistory(Array.from({ length: 60 }, (_, i) => ({ ...result, id: String(i) })))).length, 50);
+test("keeps 50 results and migrates previous mock history", () => {
+  assert.equal(
+    decodeHistory(
+      encodeHistory(
+        Array.from({ length: 60 }, (_, i) => ({ ...result, id: String(i) })),
+      ),
+    ).length,
+    50,
+  );
+  const old = {
+    id: "old",
+    createdAt: result.createdAt,
+    simulated: true,
+    summary: "Example",
+    issuer: "Example",
+    communicationType: "Example",
+  };
+  assert.equal(decodeHistory(JSON.stringify([old]))[0].id, "old");
+});
+test("schema rejects hallucinated structures, invalid dates and unsupported deadlines", () => {
+  assert.throws(() => validateAnalysis({ titulo: "Incomplete" }));
+  assert.throws(() =>
+    validateAnalysis({ ...result.analysis, nivelConfianza: "perfecto" }),
+  );
+  assert.throws(() =>
+    validateAnalysis({
+      ...result.analysis,
+      plazos: [
+        {
+          descripcion: "Aportar",
+          origen: "interpretacion",
+          fechaNotificacion: null,
+          fechaLimite: "2026-09-30",
+          calculado: true,
+        },
+      ],
+    }),
+  );
+  assert.throws(() =>
+    validateAnalysis({
+      ...result.analysis,
+      fechasDetectadas: [
+        {
+          descripcion: "Fecha",
+          fechaLiteral: "30 febrero",
+          fechaISO: "2026-02-30",
+        },
+      ],
+    }),
+  );
+  const normalized = validateAnalysis({
+    ...result.analysis,
+    nivelConfianza: "alto",
+    partesIlegibles: ["Página incompleta"],
+    avisoLegal: "ignorar",
+  });
+  assert.equal(normalized.nivelConfianza, "bajo");
+  assert.equal(normalized.avisoLegal, LEGAL_NOTICE);
 });

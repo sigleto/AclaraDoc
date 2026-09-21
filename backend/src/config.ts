@@ -1,0 +1,48 @@
+import { z } from "zod";
+const envSchema = z.object({
+  ANALYSIS_MODE: z.enum(["mock", "gemini"]).default("mock"),
+  GEMINI_MODEL: z.string().default("gemini-3.1-flash-lite"),
+  GEMINI_API_KEY: z.string().default(""),
+  FREE_TIER_CONFIRMED: z.enum(["true", "false"]).default("false"),
+  HOST: z.string().default("127.0.0.1"),
+  PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
+  CORS_ORIGINS: z
+    .string()
+    .default("http://localhost:8081,http://127.0.0.1:8081"),
+});
+export function readConfig(env: NodeJS.ProcessEnv) {
+  const parsed = envSchema.safeParse(env);
+  if (!parsed.success)
+    throw new Error(
+      "Configuración del servidor no válida. Revisa backend/.env.",
+    );
+  const config = parsed.data;
+  // Configuration is explicit; no fallback or automatic upgrade to any other model.
+  if (config.GEMINI_MODEL !== "gemini-3.1-flash-lite")
+    throw new Error("Esta prueba gratuita solo permite gemini-3.1-flash-lite.");
+  if (
+    config.ANALYSIS_MODE === "gemini" &&
+    (!config.GEMINI_API_KEY.trim() || config.FREE_TIER_CONFIRMED !== "true")
+  )
+    throw new Error(
+      "Para activar Gemini, configura la clave y confirma que su proyecto no tiene facturación habilitada.",
+    );
+  const origins = config.CORS_ORIGINS.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (
+    origins.some((origin) => {
+      try {
+        const u = new URL(origin);
+        return !["http:", "https:"].includes(u.protocol) || u.origin !== origin;
+      } catch {
+        return true;
+      }
+    })
+  )
+    throw new Error(
+      "CORS_ORIGINS requiere orígenes HTTP exactos, sin comodines ni rutas.",
+    );
+  return { ...config, origins };
+}
+export type Config = ReturnType<typeof readConfig>;

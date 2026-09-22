@@ -23,6 +23,7 @@ test("real mode requires free-tier confirmation and key; never switches models",
       ANALYSIS_MODE: "gemini",
       GEMINI_API_KEY: "synthetic",
       FREE_TIER_CONFIRMED: "true",
+      QUOTA_HASH_SECRET: "synthetic-test-only-secret-32-characters",
     }).ANALYSIS_MODE,
     "gemini",
   );
@@ -39,6 +40,9 @@ test("SDK request sends inline data, structured schema and system instructions w
     assert.ok(params.config?.responseJsonSchema);
     assert.equal(params.config?.tools, undefined);
     assert.match(String(params.config?.systemInstruction), /NO CONFIABLE/);
+    assert.match(String(params.config?.systemInstruction), /factura, contrato privado, publicidad o comunicación administrativa/);
+    assert.match(String(params.config?.systemInstruction), /IBAN, CUPS/);
+    assert.match(String(params.config?.systemInstruction), /No calcules plazos/);
     assert.ok(
       JSON.stringify(params.contents).includes(
         Buffer.from("synthetic").toString("base64"),
@@ -90,7 +94,7 @@ test("unavailable authorized model fails safely without fallback or retry", asyn
 test("output protection omits common identifiers without changing dates", () => {
   const value = mockAnalysis();
   value.advertencias = [
-    "12345678Z test@example.invalid +34 612 345 678 ES91 2100 0418 4502 0005 1332",
+    "12345678Z test@example.invalid +34 612 345 678 ES91 2100 0418 4502 0005 1332 ES0021000000000001AB",
   ];
   value.fechasDetectadas = [
     {
@@ -102,7 +106,7 @@ test("output protection omits common identifiers without changing dates", () => 
   const cleaned = sanitizeAnalysis(value);
   assert.doesNotMatch(
     JSON.stringify(cleaned),
-    /12345678Z|test@example|612 345|2100 0418/,
+    /12345678Z|test@example|612 345|2100 0418|ES0021/,
   );
   assert.equal(cleaned.fechasDetectadas[0].fechaISO, "2026-09-20");
 });

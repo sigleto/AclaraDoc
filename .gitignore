@@ -37,6 +37,11 @@ yarn-error.*
 !.env.example
 !backend/.env.example
 backend/dist/
+backend/.data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
 
 # typescript
 *.tsbuildinfo

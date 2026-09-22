@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Image } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -15,12 +15,19 @@ import { DocumentActions } from "../components/DocumentActions";
 import { useApp } from "../state/AppProvider";
 import { usesBackend } from "../services/analysis";
 import { CONSENT_TEXT } from "../../shared/analysis";
+import { QuotaStatus } from "../components/QuotaStatus";
 
 export default function Review() {
   const app = useApp();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
+  const [time, setTime] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const waiting = app.retryAt !== null && app.retryAt > time;
   async function run(accepted = false) {
     setError(null);
     if (usesBackend && !app.consentAccepted && !accepted) {
@@ -54,6 +61,7 @@ export default function Review() {
         se envían completos y sus páginas se cuentan en el servidor.
       </Copy>
       <Notice />
+      {usesBackend && <QuotaStatus quota={app.quota} />}
       {showConsent ? (
         <Card>
           <Heading>Antes de enviar el documento</Heading>
@@ -65,7 +73,7 @@ export default function Review() {
           <Action
             title="Aceptar y analizar"
             onPress={() => void run(true)}
-            disabled={app.busy}
+            disabled={app.busy || waiting}
           />
           <Action
             title="Cancelar envío"
@@ -123,13 +131,15 @@ export default function Review() {
               title={
                 usesBackend ? "Analizar documento" : "Ver análisis simulado"
               }
-              disabled={!pages.length || !app.ready}
+              disabled={!pages.length || !app.ready || waiting}
               onPress={() => void run()}
             />
           )}
         </>
       )}
       <ErrorMessage message={error ?? app.error} />
+      {waiting && <Copy>Podrás volver a intentarlo aproximadamente en {Math.max(1, Math.ceil((app.retryAt! - time) / 60_000))} minuto(s).</Copy>}
+      {!app.busy && app.retryAt !== null && !waiting && <Action title="Intentar de nuevo" secondary onPress={() => { if (pages.length) void run(); else router.replace("/"); }} />}
       {app.busy && (
         <Card>
           <ActivityIndicator accessibilityLabel="Analizando documento" />

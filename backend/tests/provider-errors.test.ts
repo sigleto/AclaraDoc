@@ -39,6 +39,7 @@ test("installed SDK serializes the request and parses a response without externa
   });
   const analyze = createGeminiAnalyzer(readConfig({
     ANALYSIS_MODE: "gemini", GEMINI_API_KEY: "synthetic-test-key", FREE_TIER_CONFIRMED: "true",
+    QUOTA_HASH_SECRET: "synthetic-test-only-secret-32-characters",
   }));
   const result = await analyze([
     { mimetype: "image/png", buffer: Buffer.from("synthetic") } as Express.Multer.File,

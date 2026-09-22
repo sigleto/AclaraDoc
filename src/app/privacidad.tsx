@@ -18,7 +18,7 @@ export default function Privacy() {
         <Heading>Recorrido del documento</Heading>
         <Copy>
           Con el servicio activado, la aplicación envía los archivos a tu
-          backend local y este a Gemini. No hay base de datos ni archivos en
+          backend local y este a Gemini. Los documentos no se guardan en la base de datos ni en
           disco en el backend: se procesan temporalmente en memoria y se liberan
           al terminar o ante un error. Google aplica sus propias condiciones y
           retención; AclaraDoc no puede borrar los datos ya recibidos por
@@ -33,6 +33,17 @@ export default function Privacy() {
       </Card>
       <Card>
         <Heading>Qué se guarda</Heading>
+        <Copy>
+          La aplicación crea un identificador aleatorio, sin usar teléfono,
+          correo ni identificadores del dispositivo. En el móvil se guarda en
+          el almacén seguro del sistema; en web, en el almacenamiento local del
+          navegador. No contiene datos de identidad ni crea una cuenta.
+          El backend conserva un hash con secreto, contadores y fechas de uso
+          durante 7 días por defecto (configurable entre 1 y 30). La IP solo se
+          usa temporalmente en memoria. Los registros de diagnóstico contienen
+          únicamente un número aleatorio de solicitud, tipo general y tamaño
+          de archivo, duración y código de resultado, sin el identificador de instalación.
+        </Copy>
         <Copy>
           El resultado permanece en memoria hasta que pulses Guardar resultado.
           El historial conserva como máximo 50 resultados localmente, sin

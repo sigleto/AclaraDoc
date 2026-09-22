@@ -3,7 +3,7 @@ import { z } from "zod";
 export const LEGAL_NOTICE =
   "AclaraDoc no es una aplicación oficial. Comprueba siempre la información con el organismo emisor. Este resultado no es asesoramiento jurídico.";
 export const CONSENT_TEXT =
-  "Para analizar el documento, su contenido será enviado a Google Gemini. En el nivel gratuito, Google puede utilizar los datos enviados para mejorar sus productos. No envíes documentos con datos personales sensibles sin ocultarlos previamente. AclaraDoc no conservará el archivo después del análisis.";
+  "Para analizar el documento, su contenido será enviado a Google Gemini. En el nivel gratuito, Google puede utilizar los datos enviados para mejorar sus productos. No envíes documentos con datos personales sensibles sin ocultarlos previamente. AclaraDoc no conservará el archivo después del análisis. Para limitar el consumo, se envía al backend un identificador aleatorio de esta instalación; solo se guarda su hash con los contadores diarios, sin el documento.";
 export const QUOTA_MESSAGE =
   "Se ha alcanzado temporalmente el límite gratuito de análisis. Inténtalo más tarde.";
 export const LIMITS = {

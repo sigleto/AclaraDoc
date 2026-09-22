@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { readQuotaConfig } from "./quota-config.js";
 const envSchema = z.object({
   ANALYSIS_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_MODEL: z.string().default("gemini-3.1-flash-lite"),
   GEMINI_API_KEY: z.string().default(""),
+  QUOTA_HASH_SECRET: z.string().default(""),
   FREE_TIER_CONFIRMED: z.enum(["true", "false"]).default("false"),
   HOST: z.string().default("127.0.0.1"),
   PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
@@ -17,6 +19,8 @@ export function readConfig(env: NodeJS.ProcessEnv) {
       "Configuración del servidor no válida. Revisa backend/.env.",
     );
   const config = parsed.data;
+  if (config.ANALYSIS_MODE !== "mock" && config.QUOTA_HASH_SECRET.length < 32)
+    throw new Error("QUOTA_HASH_SECRET debe contener al menos 32 caracteres aleatorios en modo Gemini.");
   // Configuration is explicit; no fallback or automatic upgrade to any other model.
   if (config.GEMINI_MODEL !== "gemini-3.1-flash-lite")
     throw new Error("Esta prueba gratuita solo permite gemini-3.1-flash-lite.");
@@ -43,6 +47,6 @@ export function readConfig(env: NodeJS.ProcessEnv) {
     throw new Error(
       "CORS_ORIGINS requiere orígenes HTTP exactos, sin comodines ni rutas.",
     );
-  return { ...config, origins };
+  return { ...config, origins, quotas: readQuotaConfig(env) };
 }
 export type Config = ReturnType<typeof readConfig>;

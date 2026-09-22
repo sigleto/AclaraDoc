@@ -17,6 +17,7 @@ const config = readConfig({});
 function post(app: ReturnType<typeof createApp>) {
   return request(app)
     .post("/api/analyze")
+    .set("X-AclaraDoc-Installation", "11111111-1111-4111-8111-111111111111")
     .set("X-AclaraDoc-Consent", "accepted-v1");
 }
 async function pdf(pages: number) {
@@ -30,6 +31,7 @@ test("health exposes mode but no secrets; consent required before upload", async
   const health = await request(app).get("/health").expect(200);
   assert.equal(health.body.mode, "mock");
   assert.equal(health.headers["cache-control"], "no-store");
+  assert.match(health.headers["x-aclaradoc-request"], /^[0-9a-f-]{36}$/);
   assert.ok(!JSON.stringify(health.body).includes("GEMINI_API_KEY"));
   await request(app)
     .post("/api/analyze")
@@ -97,13 +99,13 @@ test("size, file count and actual PDF page count limits", async () => {
   await r.expect(413);
 });
 test("IP limit cannot be bypassed with an untrusted X-Forwarded-For", async () => {
-  const app = createApp(config, { ipLimit: 1 });
+  const app = createApp({ ...config, ANALYSIS_MODE: "gemini" }, { ipLimit: 1, analyze: async () => mockAnalysis() });
   await post(app).attach("files", png, "page.png").expect(200);
   const result = await post(app)
     .set("X-Forwarded-For", "192.0.2.12")
     .attach("files", png, "page.png")
     .expect(429);
-  assert.equal(result.body.error.code, "RATE_LIMITED");
+  assert.equal(result.body.error.code, "IP_LIMIT");
 });
 test("429 does not retry and opens a shared quota cooldown", async () => {
   let calls = 0;
@@ -117,10 +119,10 @@ test("429 does not retry and opens a shared quota cooldown", async () => {
   });
   const first = await post(app).attach("files", png, "page.png").expect(429);
   assert.equal(first.body.error.message, QUOTA_MESSAGE);
-  assert.equal(first.headers["retry-after"], "900");
+  assert.equal(first.headers["retry-after"], "3600");
   await post(app).attach("files", png, "page.png").expect(429);
   assert.equal(calls, 1);
-  time += 900_001;
+  time += 3_600_001;
   await post(app).attach("files", png, "page.png").expect(429);
   assert.equal(calls, 2);
 });
@@ -180,7 +182,7 @@ test("validation error and disposal never require temporary files on disk", asyn
 test("daily real-attempt budget stops at twenty and resets on the next UTC day", async () => {
   let time = Date.UTC(2026, 8, 20, 12);
   let calls = 0;
-  const app = createApp({ ...config, ANALYSIS_MODE: "gemini" }, {
+  const app = createApp({ ...config, ANALYSIS_MODE: "gemini", quotas: { ...config.quotas, DEVICE_DAILY_LIMIT: 20 } }, {
     now: () => time,
     ipLimit: 100,
     analyze: async () => {
@@ -191,7 +193,7 @@ test("daily real-attempt budget stops at twenty and resets on the next UTC day",
   for (let i = 0; i < 20; i++)
     await post(app).attach("files", png, "page.png").expect(503);
   const response = await post(app).attach("files", png, "page.png").expect(429);
-  assert.equal(response.body.error.message, QUOTA_MESSAGE);
+  assert.equal(response.body.error.code, "GLOBAL_LIMIT");
   assert.equal(calls, 20);
   time += 86_400_000;
   await post(app).attach("files", png, "page.png").expect(503);
@@ -248,6 +250,7 @@ test("disconnecting the client aborts the provider and clears uploaded bytes", a
   });
   await once(server, 'listening');
   const req = request(server).post('/api/analyze')
+    .set('X-AclaraDoc-Installation', '11111111-1111-4111-8111-111111111111')
     .set('X-AclaraDoc-Consent', 'accepted-v1').attach('files', png, 'page.png');
   const response = req.then(() => {}, () => {});
   await ready;

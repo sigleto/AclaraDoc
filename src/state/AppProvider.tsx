@@ -13,6 +13,9 @@ import type {
   SelectedDocument,
 } from "../types/document";
 import { LIMITS } from "../../shared/analysis";
+import type { Quota } from "../../shared/quota";
+import { getInstallation } from "../services/installation";
+import { AnalysisError } from "../services/http";
 import { analyzeDocument, usesBackend } from "../services/analysis";
 import { decodeHistory, encodeHistory, HISTORY_KEY } from "../services/history";
 import {
@@ -32,6 +35,8 @@ function useAppState() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [consentAccepted, setConsentAccepted] = useState(false);
+  const [quota, setQuota] = useState<Quota | null>(null);
+  const [retryAt, setRetryAt] = useState<number | null>(null);
   const lock = useRef(false);
   const historyLock = useRef(false);
   const historyReadable = useRef(true);
@@ -40,6 +45,8 @@ function useAppState() {
   useEffect(() => {
     let active = true;
     async function load() {
+      try { await getInstallation(); }
+      catch { if (active && usesBackend) setError("No se pudo preparar esta instalación. Cierra y vuelve a abrir la aplicación."); }
       try {
         clearAbandonedPickerCache();
       } catch {
@@ -126,14 +133,16 @@ function useAppState() {
     setBusy(true);
     setError(null);
     setCurrentResult(null);
+    setRetryAt(null);
     const abort = new AbortController();
     controller.current = abort;
     try {
-      const result = await analyzeDocument(document, abort.signal, consent);
+      const result = await analyzeDocument(document, abort.signal, consent, setQuota);
       if (abort.signal.aborted) throw new Error("Análisis cancelado.");
       setCurrentResult(result);
       return result;
     } catch (e) {
+      setRetryAt(e instanceof AnalysisError ? e.retryAt : null);
       setError(
         e instanceof Error ? e.message : "No se pudo analizar el documento.",
       );
@@ -207,6 +216,8 @@ function useAppState() {
     saving,
     error,
     consentAccepted,
+    quota,
+    retryAt,
     addPages,
     removePage,
     movePage,

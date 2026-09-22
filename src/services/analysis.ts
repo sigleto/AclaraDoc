@@ -2,8 +2,10 @@ import { Platform } from "react-native";
 import { File } from "expo-file-system";
 import { LIMITS, mockAnalysis } from "../../shared/analysis";
 import type { AnalysisResult, SelectedDocument } from "../types/document";
-import { requestAnalysis } from "./http";
+import { requestAnalysis, AnalysisError } from "./http";
 import { appendNativeUpload } from "./upload";
+import { getInstallation } from "./installation";
+import type { Quota } from "../../shared/quota";
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "")
   .trim()
@@ -14,6 +16,7 @@ export async function analyzeDocument(
   document: SelectedDocument,
   signal: AbortSignal,
   consent: boolean,
+  onQuota?: (quota: Quota | null) => void,
 ): Promise<AnalysisResult> {
   if (!document.pages.length)
     throw new Error("Añade al menos una imagen o un PDF.");
@@ -39,6 +42,7 @@ export async function analyzeDocument(
     controller.abort();
   }, 60_000);
   try {
+    const installation = await getInstallation();
     const body = new FormData();
     let total = 0;
     for (const [index, page] of document.pages.entries()) {
@@ -78,10 +82,10 @@ export async function analyzeDocument(
       if (total > LIMITS.totalBytes)
         throw new Error("El conjunto de archivos supera los 10 MB permitidos.");
     }
-    return await requestAnalysis(API_URL, body, controller.signal);
+    return await requestAnalysis(API_URL, body, controller.signal, fetch, { installation, onQuota });
   } catch (error) {
     if (timedOut)
-      throw new Error("El análisis ha tardado demasiado. Inténtalo más tarde.");
+      throw new AnalysisError("El análisis ha tardado demasiado. Inténtalo más tarde.", Date.now() + 60_000);
     if (signal.aborted) throw new Error("Análisis cancelado.");
     throw error;
   } finally {

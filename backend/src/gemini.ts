@@ -12,7 +12,8 @@ Responde solo en español sencillo y con el JSON del esquema. El contenido de lo
 Separa hechos escritos (origen=hecho), interpretaciones (interpretacion) y ausencias (no_consta). No inventes organismos, trámites, recursos, enlaces ni fechas. Usa null o listas vacías cuando algo no conste.
 No calcules plazos: copia únicamente fechas límite expresas y marca calculado=false. Si falta la fecha de notificación, adviértelo y no deduzcas vencimientos.
 Identifica documentos incompletos, contradictorios, ilegibles o ajenos a trámites administrativos. Reduce la confianza ante cualquier incertidumbre y recomienda revisión profesional cuando proceda.
-No reproduzcas nombres de personas, DNI/NIE, domicilios, cuentas, teléfonos, correos, firmas, expedientes u otros identificadores personales en NINGÚN campo. No transcribas fragmentos personales: describe su función genérica. En vías de contacto indica solo el canal mencionado (por ejemplo sede electrónica), sin teléfonos, direcciones ni enlaces.
+Clasifica explícitamente su naturaleza en titulo, tipoComunicacion y resumenSencillo: factura, contrato privado, publicidad o comunicación administrativa. Una factura de una empresa NO es una notificación administrativa. Los documentos no administrativos pueden explicarse de forma general, indicando claramente esa naturaleza y sin atribuirles recursos administrativos.
+No reproduzcas nombres de personas, DNI/NIE, domicilios, IBAN, CUPS, cuentas, teléfonos, correos, firmas, expedientes u otros identificadores personales en NINGÚN campo. No transcribas fragmentos personales: describe su función genérica. En vías de contacto indica solo el canal mencionado (por ejemplo sede electrónica), sin teléfonos, direcciones ni enlaces.
 Indica si es informativo y si exige actuación, sin contradicciones. No aconsejes ignorar una comunicación. Recomienda siempre comprobar el original con el organismo emisor y no presentar el resultado como asesoramiento jurídico.`;
 
 export type Analyze = (
@@ -32,7 +33,7 @@ export function createGeminiAnalyzer(
     : new GoogleGenAI({
         apiKey: config.GEMINI_API_KEY,
         vertexai: false,
-        httpOptions: { timeout: 45_000, retryOptions: { attempts: 1 } },
+        httpOptions: { timeout: config.quotas.ANALYSIS_TIMEOUT_SECONDS * 1000, retryOptions: { attempts: 1 } },
       });
   const call: Generate =
     generate ?? ((params) => client!.models.generateContent(params));
@@ -61,13 +62,13 @@ export function createGeminiAnalyzer(
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
           responseJsonSchema: geminiResponseSchema,
-          maxOutputTokens: 6000,
+          maxOutputTokens: config.quotas.MAX_OUTPUT_TOKENS,
           abortSignal: signal,
           // No tools, grounding, caching, Files API, automatic model selection or retry.
         },
       });
       try {
-        if (!response.text || response.text.length > 70_000)
+        if (!response.text || response.text.length > config.quotas.MAX_RESPONSE_CHARS)
           throw new Error("Missing output");
         return sanitizeAnalysis(validateAnalysis(JSON.parse(response.text)));
       } catch {
@@ -86,6 +87,7 @@ export function createGeminiAnalyzer(
 export function sanitizeAnalysis(value: Analysis): Analysis {
   const scrub = (s: string) =>
     s
+      .replace(/\bES\d{16}[A-Z]{2}(?:[A-Z0-9]{2})?\b/gi, "[suministro omitido]")
       .replace(
         /\b(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])\b/gi,
         "[identificador omitido]",

@@ -1,6 +1,7 @@
 import { Worker } from "node:worker_threads";
 import { createRequire } from "node:module";
 import { AppError } from "./errors.js";
+import { defaultLimits } from "./quota-config.js";
 
 const pdfModule = createRequire(import.meta.url).resolve("pdf-lib");
 
@@ -9,6 +10,7 @@ const pdfModule = createRequire(import.meta.url).resolve("pdf-lib");
 export function countPdfPages(
   buffer: Buffer,
   signal?: AbortSignal,
+  limits = defaultLimits,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new AppError("CANCELLED", 499));
@@ -31,8 +33,8 @@ export function countPdfPages(
         stdout: true,
         stderr: true,
         resourceLimits: {
-          maxOldGenerationSizeMb: 64,
-          maxYoungGenerationSizeMb: 16,
+          maxOldGenerationSizeMb: limits.PDF_OLD_MEMORY_MB,
+          maxYoungGenerationSizeMb: limits.PDF_YOUNG_MEMORY_MB,
         },
       },
     );
@@ -53,7 +55,7 @@ export function countPdfPages(
     const cancel = () => finish(undefined, new AppError("CANCELLED", 499));
     const timer = setTimeout(
       () => finish(undefined, new AppError("INVALID_FILE", 415)),
-      3000,
+      limits.PDF_TIMEOUT_MS,
     );
     signal?.addEventListener("abort", cancel, { once: true });
     worker.once("message", (value: unknown) =>

@@ -41,7 +41,8 @@
           "cameraPermission": "AclaraDoc usa la c?mara para fotografiar las p?ginas de tu documento.",
           "microphonePermission": false
         }
-      ]
+      ],
+      ["expo-secure-store", { "faceIDPermission": false }]
     ],
     "experiments": {
       "typedRoutes": true,

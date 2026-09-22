@@ -1,4 +1,39 @@
-# Verificación de la segunda fase — 20 de septiembre de 2026
+# Verificación de AclaraDoc
+
+## Control de consumo — 22 de septiembre de 2026
+
+El usuario confirmó que el estado anterior funcionaba en un móvil real y había analizado una factura con Gemini 3.1 Flash Lite. Git tenía pendientes las correcciones de esquema, previamente verificadas; se guardaron en `3efa413` como punto de retorno antes de comenzar esta fase. Se conservan `46bfd54` y `f5019d7`. La confirmación del recorrido móvil procede del usuario, no de una prueba de cámara realizada por el agente.
+
+Implementado: configuración de límites con rangos y valores seguros; UUID v4 de instalación con SecureStore (localStorage en web); cuotas diarias por instalación y global, IP temporal y concurrencia; QuotaStore en memoria y SQLite con transacciones, HMAC y purga; pausa persistente tras 429 de Google; métricas por lista permitida e identificador de solicitud; mensajes diferenciados, tiempo de espera e indicador de consumo en revisión y resultado. Se mantiene el esquema del resultado y el historial. El prompt distingue documentos privados de administrativos y refuerza la omisión de identificadores, incluido CUPS.
+
+Se configuró exclusivamente el nuevo `QUOTA_HASH_SECRET` mediante el comando de mantenimiento `quota:secret`: genera 32 bytes aleatorios, no imprime el secreto y conserva las demás variables. No se mostraron ni inspeccionaron archivos `.env` mediante herramientas de revisión. La clave de Google y el modelo no se cambiaron. Las comprobaciones Expo usaron `EXPO_NO_DOTENV=1`. No se enviaron documentos ni se hicieron llamadas reales a Gemini en esta fase.
+
+Comprobaciones finales:
+
+- `npm run verify`: tipos de frontend/backend, ESLint, 17 pruebas de cliente y 32 de backend, compatibilidad Expo.
+- `npm run build --workspace backend`: compilación correcta.
+- `npm run export:all`: Android, iOS y ocho rutas web exportados correctamente; no equivale a generar APK/IPA.
+- Expo Doctor: 21/21 comprobaciones aprobadas.
+- `git diff --check`: sin errores. Comprobados los archivos versionados y candidatos: ningún `.env` real, SQLite, PDF/documento de prueba ni clave detectada por los patrones revisados. Los ejemplos sin secretos se versionan; las bases locales y auxiliares están ignorados. Esta revisión por patrones no es una garantía general de detección de secretos.
+
+Las pruebas cubren creación/persistencia/reutilización simultánea del UUID, UUID ausente o inválido, tres intentos y cuarto rechazado, cambio de día UTC, instalaciones independientes, IP compartida y cabeceras de proxy no confiables, presupuesto global de veinte, dos análisis simultáneos, ausencia de consumo previo al proveedor, errores posteriores que sí cuentan, compatibilidad mock y privacidad de errores/métricas. SQLite se cierra y reabre entre dos instancias de la app para verificar contadores y pausa; dos conexiones comparten el presupuesto global. Se comprueba purga tanto en los almacenes como al iniciar la app. Todos los proveedores y el transporte externo de las pruebas están sustituidos.
+
+En una ejecución simultánea de pruebas y exportación falló una prueba de backend; la suite completa posterior, ejecutada sin la exportación en paralelo, pasó. No se ha atribuido una causa definitiva a ese fallo aislado ni se han ampliado los tiempos o límites para ocultarlo.
+
+`npm audit --omit=dev` se volvió a consultar: 14 avisos moderados, ninguno alto ni crítico, en la cadena de herramientas Expo/Router. Las correcciones automáticas proponen cambios incompatibles de versiones principales; no se aplicaron. Esto sigue pendiente antes de publicar y no impide conservar este prototipo local verificado.
+
+Pruebas manuales de esta fase, pendientes en el móvil:
+
+1. Reiniciar backend y Expo, cerrar y volver a abrir la app. Confirmar que no pide permisos nuevos ni muestra el UUID; rechazar primero el consentimiento y comprobar que no se envía nada.
+2. Con documentos ficticios o datos previamente ocultados, comprobar tres análisis durante el día, descenso del indicador y cuarto intento bloqueado. No hace falta agotar cuotas de Google: sus errores y pausas se simulan en la suite.
+3. Reiniciar la app y el backend tras consumir un intento: el siguiente análisis debe continuar el contador, sin reiniciarlo. El indicador vuelve a estar disponible con la siguiente respuesta del backend.
+4. Comprobar que una instalación distinta tiene su propio contador, teniendo en cuenta que ambas comparten el límite de conexión y el global.
+5. Pulsar analizar rápidamente dos veces, cancelar un análisis y cortar la red: no debe haber reintento automático; se deben descartar las copias y ofrecer repetir solo cuando corresponda. Repetir requiere seleccionar de nuevo.
+6. Verificar fotos, PDF multipágina, guardado y lectura del historial anterior, eliminación de copias y documentos no administrativos. Para comprobar el circuito sin consumo, usar mock; los contadores reales no se descuentan en mock.
+
+Limitaciones para publicación: el UUID se puede falsificar o restablecer y no autentica personas; IP/concurrencia no están coordinadas entre procesos; SQLite local no debe sincronizarse con OneDrive (el workspace actual está dentro de OneDrive). Falta HTTPS, medidas de acceso/abuso, revisión de privacidad y condiciones del proveedor, actualización de dependencias y pruebas nativas completas. En web se necesita localhost o HTTPS para la generación criptográfica; su almacenamiento local no es SecureStore. En iOS el llavero puede sobrevivir a reinstalaciones. Un cierre abrupto entre reserva local y envío puede descontar conservadoramente un intento. El prompt y los filtros no garantizan ausencia de datos personales ni inmunidad a instrucciones maliciosas. No se comprobó técnicamente la facturación, no se activó ningún servicio de pago y no se desplegó ni publicó la aplicación.
+
+## Evidencia histórica de la segunda fase — 20–21 de septiembre de 2026
 
 ## Configuración aceptada por Google — 21 de septiembre de 2026
 

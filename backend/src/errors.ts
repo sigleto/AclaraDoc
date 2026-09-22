@@ -1,5 +1,7 @@
 import { QUOTA_MESSAGE } from "../../shared/analysis.js";
+import { quotaMessages } from "../../shared/quota.js";
 export const messages = {
+  ...quotaMessages,
   QUOTA_EXHAUSTED: QUOTA_MESSAGE,
   RATE_LIMITED:
     "Demasiadas solicitudes. Espera unos minutos antes de volver a intentarlo.",
@@ -7,7 +9,7 @@ export const messages = {
     "El archivo o el conjunto de archivos supera el tamaño permitido.",
   INVALID_FILE:
     "Archivo no válido. Selecciona JPG, JPEG, PNG o PDF sin contraseña.",
-  TOO_MANY_PAGES: "Se permiten como máximo 6 archivos y 6 páginas en total.",
+  TOO_MANY_PAGES: "El documento supera el límite de archivos o páginas del servicio.",
   INVALID_REQUEST:
     "La solicitud no es válida. Vuelve a seleccionar el documento.",
   CONSENT_REQUIRED: "Debes aceptar el envío del documento antes del análisis.",

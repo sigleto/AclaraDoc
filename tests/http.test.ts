@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { requestAnalysis } from "../src/services/http";
+import { requestAnalysis, AnalysisError } from "../src/services/http";
 import { mockAnalysis, QUOTA_MESSAGE } from "../shared/analysis";
 const url = "http://127.0.0.1:3001";
 const signal = new AbortController().signal;
@@ -103,4 +103,29 @@ test("provider diagnostics distinguish rejected requests from outages without di
       },
     );
   }
+});
+
+test("installation header and quota metadata are separate from the saved result", async () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const quota = { limit: 3, remaining: 2, resetAt: new Date(Date.now() + 86_400_000).toISOString() };
+  let received: unknown;
+  const result = await requestAnalysis(url, new FormData(), signal, async (_input, init) => {
+    assert.equal((init?.headers as Record<string, string>)["X-AclaraDoc-Installation"], id);
+    return new Response(JSON.stringify({ id: "id", createdAt: new Date().toISOString(), simulated: false, analysis: mockAnalysis(), quota }));
+  }, { installation: id, onQuota: value => { received = value; } });
+  assert.deepEqual(received, quota);
+  assert.equal("quota" in result, false);
+});
+test("four quota causes are distinct; retry time is bounded and never displays raw server text", async () => {
+  const messages = new Set<string>();
+  for (const code of ["IP_LIMIT", "DEVICE_LIMIT", "GLOBAL_LIMIT", "QUOTA_EXHAUSTED"]) {
+    await assert.rejects(requestAnalysis(url, new FormData(), signal, response(429, { error: { code, message: "private-provider-message", retryAfterSeconds: 1800 } })), error => {
+      assert.ok(error instanceof AnalysisError);
+      assert.ok(error.retryAt !== null && error.retryAt > Date.now());
+      assert.ok(!error.message.includes("private"));
+      messages.add(error.message);
+      return true;
+    });
+  }
+  assert.equal(messages.size, 4);
 });

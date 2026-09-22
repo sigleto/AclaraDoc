@@ -11,6 +11,7 @@ import {
 } from "../components/ui";
 import { useApp } from "../state/AppProvider";
 import type { Statement } from "../types/document";
+import { QuotaStatus } from "../components/QuotaStatus";
 
 const labels = {
   hecho: "Hecho escrito",
@@ -56,6 +57,7 @@ export default function Result() {
           : "Análisis con Gemini. Puede contener errores: contrasta cada dato con el original."}
       </Copy>
       <ErrorMessage message={app.error} />
+      {!result.simulated && <QuotaStatus quota={app.quota} />}
       <Card>
         <Heading>Resumen en lenguaje sencillo</Heading>
         <Statements items={[a.resumenSencillo]} />

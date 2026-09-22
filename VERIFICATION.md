@@ -1,5 +1,15 @@
 # Verificación de AclaraDoc
 
+## Selección de PDF en Android — 22 de septiembre de 2026
+
+Ante el mensaje «La copia del archivo ya no está disponible», se revisó el código nativo de las dependencias instaladas. DocumentPicker 57 copia en `context.cacheDir`, mientras que FileSystem e ImagePicker usan `appContext.cacheDirectory`; FileSystem devuelve `exists=false` también cuando deniega el acceso. Esta diferencia de ámbito en Expo Go es compatible con el fallo comunicado, aunque no se ha inspeccionado el teléfono para confirmar su ruta concreta.
+
+En Android, la selección de PDF ahora usa `File.pickFileAsync` y copia los archivos seleccionados a `Paths.cache/DocumentPicker`, dentro del ámbito del lector. Se espera a que cada copia termine y se comprueba su existencia y tamaño real antes de añadirla a la selección. Solo se copian originales: nunca se mueven ni se eliminan. La limpieza existente elimina las copias al retirar, terminar, fallar, cancelar o reiniciar; un fallo durante la preparación elimina también las copias parciales. iOS y web conservan su selector anterior. Referencia: [selector de FileSystem](https://docs.expo.dev/versions/latest/sdk/filesystem/#pickfileasyncoptions).
+
+Se añaden pruebas de preparación asíncrona, originales intactos, limpieza parcial, mensajes sin errores nativos, número de archivos y tamaños reales. No se realizan llamadas a Gemini ni se amplían límites. Queda probar en el teléfono el mismo PDF desde Descargas y desde su proveedor habitual después de recargar Expo y volver a seleccionarlo.
+
+Comprobaciones aprobadas: `npm run verify` (20 pruebas de cliente y 32 de backend, tipos, ESLint y compatibilidad Expo), compilación del backend, exportación Android/iOS/web y Expo Doctor 21/21. Las pruebas no ejecutan el selector nativo de un teléfono; comprueban el manejo y limpieza de las copias mediante un adaptador sustituido.
+
 ## Control de consumo — 22 de septiembre de 2026
 
 El usuario confirmó que el estado anterior funcionaba en un móvil real y había analizado una factura con Gemini 3.1 Flash Lite. Git tenía pendientes las correcciones de esquema, previamente verificadas; se guardaron en `3efa413` como punto de retorno antes de comenzar esta fase. Se conservan `46bfd54` y `f5019d7`. La confirmación del recorrido móvil procede del usuario, no de una prueba de cámara realizada por el agente.

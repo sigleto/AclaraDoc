@@ -73,6 +73,8 @@ El PC y el teléfono deben estar en la misma red privada. **localhost en el móv
 5. Desde el navegador del teléfono abre http://192.168.1.50:3001/health para comprobar conectividad. Si falla, revisa red invitada/aislamiento Wi-Fi y permite el puerto 3001 solo en el perfil privado del cortafuegos, sin desactivarlo.
 6. Prueba selección múltiple, cámara, PDF multipágina, consentimiento, cancelar, resultado y guardado voluntario.
 
+En Android los PDF se seleccionan con FileSystem y se copian a la caché privada accesible para el lector. Si aparece un error al preparar la copia, descarga primero el PDF en el teléfono y vuelve a seleccionarlo. Un error de acceso a la copia ocurre antes del envío y no consume un análisis; los límites de páginas se comprueban después en el backend.
+
 Para web utiliza localhost en el PC: la generación criptográfica del UUID requiere un contexto seguro (localhost o HTTPS), por lo que web sobre una IP LAN con HTTP no está admitido. Las apps nativas normalmente no envían Origin; CORS no autentica usuarios. No publiques el puerto, no uses túneles, no despliegues este backend. HTTP local no cifra el contenido: usa documentos ficticios o con datos ocultados previamente y una red de confianza. Para una aplicación distribuida se necesitarían HTTPS y medidas de acceso y abuso adicionales, fuera de esta fase.
 
 ## API, límites y errores

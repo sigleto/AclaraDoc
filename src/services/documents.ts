@@ -4,6 +4,7 @@ import { File, Paths, Directory } from "expo-file-system";
 import { Platform } from "react-native";
 import type { DocumentPage } from "../types/document";
 import { LIMITS } from "../../shared/analysis";
+import { cachePdfSelection } from "./pdf-cache";
 
 export type SelectionSource = "camera" | "images" | "pdf";
 export const makeId = () =>
@@ -13,6 +14,22 @@ export async function selectPages(
   source: SelectionSource,
 ): Promise<DocumentPage[]> {
   if (source === "pdf") {
+    if (Platform.OS === "android") {
+      // DocumentPicker 57 uses context.cacheDir on Android; FileSystem uses
+      // appContext.cacheDirectory (scoped in Expo Go). Keep picking and reading
+      // in FileSystem so the selected content URI has the required permission.
+      const result = await File.pickFileAsync({ mimeTypes: ["application/pdf"], multipleFiles: true });
+      if (result.canceled) return [];
+      const directory = new Directory(Paths.cache, "DocumentPicker");
+      const copies = await cachePdfSelection<File>(result.result, () => {
+        directory.create({ intermediates: true, idempotent: true });
+        return new File(directory, `${makeId()}.pdf`);
+      });
+      return copies.map((file, index) => ({
+        id: makeId(), uri: file.uri, name: `Documento ${index + 1}.pdf`, kind: "pdf",
+        mimeType: "application/pdf", size: file.size, pageCount: null,
+      }));
+    }
     const result = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
       multiple: true,

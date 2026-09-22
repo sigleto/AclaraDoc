@@ -3,20 +3,21 @@ import { DAY_MS } from "./quota-config.js";
 import type { Quota } from "../../shared/quota.js";
 
 export type DailyCounts = { device: number; global: number; cooldown: number };
+type MaybeAsync<T> = T | Promise<T>;
 export interface QuotaStore {
-  read(hash: string, day: number): DailyCounts;
+  read(hash: string, day: number): MaybeAsync<DailyCounts>;
   // Both daily limits are checked and incremented within one transaction.
-  consume(hash: string, day: number, deviceLimit: number, globalLimit: number, now: number): boolean;
-  pause(until: number): void;
-  cleanup(beforeDay: number): void;
-  close(): void;
+  consume(hash: string, day: number, deviceLimit: number, globalLimit: number, now: number, signal?: AbortSignal): MaybeAsync<boolean>;
+  pause(until: number): MaybeAsync<void>;
+  cleanup(beforeDay: number): MaybeAsync<void>;
+  close(): MaybeAsync<void>;
 }
 export function hashInstallation(id: string, secret: string) {
   return createHmac("sha256", secret).update(id.toLowerCase()).digest("hex");
 }
-export function quotaSnapshot(store: QuotaStore, hash: string, now: number, limit: number): Quota {
+export async function quotaSnapshot(store: QuotaStore, hash: string, now: number, limit: number): Promise<Quota> {
   const day = Math.floor(now / DAY_MS);
-  return { limit, remaining: Math.max(0, limit - store.read(hash, day).device), resetAt: new Date((day + 1) * DAY_MS).toISOString() };
+  return { limit, remaining: Math.max(0, limit - (await store.read(hash, day)).device), resetAt: new Date((day + 1) * DAY_MS).toISOString() };
 }
 export class MemoryQuotaStore implements QuotaStore {
   private devices = new Map<number, Map<string, number>>();

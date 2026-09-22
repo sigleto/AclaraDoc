@@ -1,5 +1,15 @@
 # AclaraDoc
 
+## Piloto Render Free + Neon Free — preparación local
+
+El backend Node/Express está preparado para un futuro piloto con PostgreSQL:
+`QUOTA_STORE=memory|sqlite|postgres`, migraciones SQL y arranque compilado. Conserva
+JPG/JPEG/PNG/PDF y todos los límites. No se han creado cuentas, bases ni servicios,
+ni se ha desplegado. Consulta [la guía paso a paso](backend/DEPLOYMENT.md) para
+preparar Neon, migrar, configurar Render y posteriormente la URL de Expo.
+`render.yaml` contiene configuración y nombres de secretos, nunca sus valores.
+No se continúa con Cloudflare ni se modifica su sonda.
+
 ## Prueba de Workers Free — implementación detenida en viabilidad
 
 Se ha autorizado un futuro backend público JPG/JPEG/PNG conservando PDF en el
@@ -93,7 +103,7 @@ Para web utiliza localhost en el PC: la generación criptográfica del UUID requ
 - POST /api/analyze: multipart/form-data, campo repetido files, cabeceras X-AclaraDoc-Consent: accepted-v1 y X-AclaraDoc-Installation: UUID v4 aleatorio válido. Un identificador ausente o inválido se rechaza antes de cargar archivos.
 - JPG/JPEG, PNG y PDF no cifrados. MIME, extensión y firma deben concordar.
 - Máximo 6 adjuntos, 6 páginas totales (PDF contado realmente), 4 MiB por archivo y 10 MiB total.
-- Hasta 2 solicitudes simultáneas; 5 intentos por IP en 15 minutos; 3 por instalación y máximo global de 20 al día UTC. Los contadores diarios y la pausa de Google persisten en SQLite al reiniciar. La ventana IP y los puestos concurrentes están en memoria.
+- Hasta 2 solicitudes simultáneas; 5 intentos por IP en 15 minutos; 3 por instalación y máximo global de 20 al día UTC. Los contadores diarios y la pausa de Google persisten en SQLite local o PostgreSQL al reiniciar. La ventana IP y los puestos concurrentes están en memoria.
 - 30 s para cargar, 3 s por validación PDF, 45 s para Gemini, 60 s de timeout en la app.
 - Un solo intento, sin reintentos automáticos. Tras un 429 de Google se pausa el proveedor 60 minutos por defecto. La app muestra literalmente: “Se ha alcanzado temporalmente el límite gratuito de análisis. Inténtalo más tarde.” El tiempo aproximado aparece por separado. Consultar durante la pausa no la prolonga.
 - Error 413 para tamaño o páginas, 415 para formato, 502 para respuesta inválida, 503 para indisponibilidad/configuración/modelo y 504 para timeout. Los mensajes no contienen errores internos.
@@ -113,7 +123,7 @@ El SDK oficial @google/genai usa generateContent con inlineData y JSON Schema, s
 
 La app no anonimiza los adjuntos. Antes del envío muestra el consentimiento solicitado, incluida la posibilidad de uso de los datos por Google en el nivel gratuito. Oculta los datos sensibles tú mismo antes de seleccionarlos.
 
-El backend no escribe documentos ni resultados en disco. Su SQLite local guarda exclusivamente hashes HMAC-SHA256 de instalación, días, contadores y marcas temporales de cuota. Mantiene los documentos en buffers durante la solicitud, los sobrescribe al terminar y libera referencias. La conversión base64 y el SDK pueden mantener copias hasta la recolección de basura; esto no es un borrado forense de RAM. El parser PDF corre en un worker con tiempo/memoria limitados y consola aislada, para no registrar contenido de archivos malformados.
+El backend no escribe documentos ni resultados en disco. SQLite local o PostgreSQL guardan exclusivamente hashes HMAC-SHA256 de instalación, días, contadores y marcas temporales de cuota. Mantiene los documentos en buffers durante la solicitud, los sobrescribe al terminar y libera referencias. La conversión base64 y el SDK pueden mantener copias hasta la recolección de basura; esto no es un borrado forense de RAM. El parser PDF corre en un worker con tiempo/memoria limitados y consola aislada, para no registrar contenido de archivos malformados.
 
 Las copias locales de ImagePicker y DocumentPicker se eliminan al quitar, descartar o finalizar cualquier intento; remanentes tras un cierre se limpian al próximo inicio. Los originales no se borran. Un fallo de limpieza se comunica.
 
@@ -170,9 +180,9 @@ Cada variable numérica admite solo enteros positivos en el rango indicado. Si f
 
 Los límites de archivo del cliente conservan sus máximos absolutos; el servidor puede ser más estricto. Cero campos de formulario adicionales y un solo intento de SDK son reglas fijas, no parámetros para desactivar protecciones.
 
-`QuotaStore` separa el control de cuotas del almacenamiento: `MemoryQuotaStore` para pruebas/mock y `SQLiteQuotaStore` para el servidor en modo Gemini. Se usa [SQLite de Node](https://nodejs.org/api/sqlite.html), disponible sin bandera desde Node 22.13 (experimental en Node 22). `backend/.data/quotas.sqlite` y sus ficheros auxiliares están ignorados por Git. No sincronices esta carpeta con OneDrive ni ejecutes varias copias del backend para uso público; el workspace actual está bajo OneDrive y debe excluirse esa carpeta de la sincronización o trasladarse el proyecto antes de pruebas públicas.
+`QuotaStore` separa el control de cuotas del almacenamiento: `MemoryQuotaStore` para pruebas/mock, `SQLiteQuotaStore` local y `PostgresQuotaStore` para Render/Neon. `QUOTA_STORE` permite elegirlos; si se omite, mock conserva memoria y Gemini conserva SQLite. PostgreSQL requiere `DATABASE_URL` privada y rechaza análisis si falla, sin cambiar de almacén. No carga SQLite ni crea su carpeta. PostgreSQL purga al arrancar y por solicitud, sin temporizador que mantenga Neon despierto; el resto conserva también la purga periódica. Las migraciones registran nombre, checksum y fecha de aplicación del esquema. Se usa [SQLite de Node](https://nodejs.org/api/sqlite.html), disponible sin bandera desde Node 22.13 (experimental en Node 22). `backend/.data/quotas.sqlite` y sus ficheros auxiliares están ignorados por Git. No sincronices esta carpeta con OneDrive ni ejecutes varias copias del backend para uso público; el workspace actual está bajo OneDrive y debe excluirse esa carpeta de la sincronización o trasladarse el proyecto antes de pruebas públicas.
 
-La reserva diaria de instalación y global es una transacción SQLite inmediatamente anterior a la invocación del proveedor. Consentimiento, UUID, archivos, pausa o concurrencia rechazados no descuentan. Una vez invocado el proveedor, cuenta aunque falle, se cancele o no haya respuesta; la IP también cuenta ese intento. No se representa la cuota oficial de Google. Un cierre abrupto entre la reserva y el envío puede descontar conservadoramente un intento que no llegó a Google. Sincronizar exactamente la aceptación remota y la transacción local no es posible con este protocolo.
+La reserva diaria de instalación y global es una transacción SQLite o PostgreSQL inmediatamente anterior a la invocación del proveedor. Consentimiento, UUID, archivos, pausa o concurrencia rechazados no descuentan. Una vez invocado el proveedor, cuenta aunque falle, se cancele o no haya respuesta; la IP también cuenta ese intento. No se representa la cuota oficial de Google. Un cierre abrupto entre la reserva y el envío puede descontar conservadoramente un intento que no llegó a Google. Sincronizar exactamente la aceptación remota y la transacción local no es posible con este protocolo.
 
 El UUID se genera al abrir por primera vez y se guarda con [SecureStore de Expo](https://docs.expo.dev/versions/latest/sdk/securestore/) sin autenticación biométrica ni permisos adicionales. En web se usa localStorage del origen, sin afirmar cifrado. No se muestra ni se envía a Google; la cabecera llega solo al backend tras aceptar el consentimiento. El HMAC usa un secreto del servidor de al menos 32 caracteres, generado por el comando `quota:secret`. Borrar los datos locales o falsificar el UUID puede eludir la cuota por instalación; no autentica personas. En iOS el llavero puede sobrevivir a una reinstalación. Rotar el secreto reinicia la asociación por instalación; el contador global permanece. No borres la base de datos para recuperar cuota.
 

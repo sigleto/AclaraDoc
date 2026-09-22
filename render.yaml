@@ -1,0 +1,45 @@
+# Preparación solamente. No crea Neon ni ejecuta migraciones en el arranque.
+services:
+  - type: web
+    name: aclaradoc-backend
+    runtime: node
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: npm ci --include=dev && npm run build --workspace backend
+    startCommand: npm run start:prod --workspace backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.2
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production
+      - key: ANALYSIS_MODE
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: QUOTA_STORE
+        value: postgres
+      - key: DEVICE_DAILY_LIMIT
+        value: "3"
+      - key: GLOBAL_DAILY_LIMIT
+        value: "20"
+      - key: IP_WINDOW_MINUTES
+        value: "15"
+      - key: IP_REQUEST_LIMIT
+        value: "5"
+      - key: MAX_CONCURRENT_ANALYSES
+        value: "2"
+      - key: FREE_TIER_CONFIRMED
+        value: "true"
+      - key: CORS_ORIGINS
+        value: ""
+      - key: TRUST_PROXY_CIDRS
+        value: ""
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QUOTA_HASH_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false

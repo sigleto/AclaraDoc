@@ -1,5 +1,61 @@
 # Verificación de AclaraDoc
 
+## Preparación Render + Neon — 22 de septiembre de 2026
+
+Partida limpia: `968405a682d1d1fdbaccff43b00778b3ff05f602`. Se prepara el backend
+Node/Express para un piloto posterior; no hay cuentas, base Neon, servicio Render,
+migraciones remotas, despliegue ni activación de facturación. No se han abierto
+`.env` reales ni llamado a Gemini. Guía futura en [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md).
+
+Cambios: selección de Memory/SQLite/PostgreSQL, adaptador asíncrono `pg`, pool de
+dos conexiones con certificado TLS verificado, límites de consulta, transacción
+con bloqueo compartido para cuotas y pausa, migraciones SQL con registro/checksum,
+configuración Render, inicio compilado y cierre del servidor/pool. IP y concurrencia
+siguen en memoria, con reserva de IP antes de esperar PostgreSQL. Una caída de la
+base rechaza el análisis sin fallback. CORS, consentimiento, UUID y límites se
+conservan. Sin cambios en `src/`, `shared/`, `worker/`, `backend/src/pdf.ts`,
+`uploads.ts` o `gemini.ts`. No se repite la sonda ni las exportaciones Expo.
+
+Comprobaciones realizadas:
+
+- `npm run typecheck`: aprobado para frontend, backend y sonda. La compilación
+  posterior también comprueba los tipos de los últimos ajustes del backend/tests.
+- `npm run lint`: sin errores; se retiró el BOM de `server.ts` que causaba un aviso.
+  ESLint focalizado posterior sobre los archivos corregidos: sin errores ni avisos.
+- Pruebas PostgreSQL focalizadas iniciales: 9/9; se añadieron después dos casos
+  para fallo tardío y concurrencia IP durante la espera de base de datos.
+- `npm test`, una ejecución completa: 20 pruebas de cliente + 43 de backend,
+  **63/63 aprobadas**, incluyendo imagen/PDF, buffers, cancelación, cuotas y privacidad.
+- Revisión final: límites SQL mediante `SET LOCAL`, timeout también en cliente y
+  descarte de conexión con error de transporte. Solo se repitieron las pruebas
+  afectadas (11/11), su ESLint y la compilación del backend: aprobados.
+- `npm run build --workspace backend`: aprobado; salida de producción en
+  `backend/dist/backend/src/server.js`, ignorada por Git.
+- Expo Doctor con `EXPO_NO_DOTENV=1`: **21/21**, sin exportaciones.
+- Revisión de archivos versionables por patrones: sin claves Google, claves
+  privadas o URL PostgreSQL real. La única URL PostgreSQL es una fixture sintética
+  con host reservado `.invalid`, nunca usada para conectar. `.env`, SQLite local
+  y compilación continúan ignorados. Esta búsqueda no detecta cualquier secreto.
+- Se añaden `pg`, sus dependencias y tipos; las versiones preexistentes del
+  lockfile se conservan. La instalación informó cero vulnerabilidades, lo que
+  no sustituye una revisión de seguridad. Los scripts usan Node 22 local; npm
+  global sigue en Node 20 y emitió avisos de versión durante la instalación.
+
+Los tests PostgreSQL usan un adaptador transaccional simulado: prueban selección,
+reservas concurrentes y forma de la transacción, rollback, reinicio, pausa,
+fallos sin llamadas al proveedor, migraciones repetibles, proxy y ausencia de
+datos privados. **No ejecutan un motor PostgreSQL, validan un certificado remoto
+ni demuestran integración Neon/Render.** Permanecen pendientes migración real,
+conexión TLS, arranque/cierre en Render, persistencia tras reinicio remoto, memoria,
+latencia/arranque en frío y pruebas móviles con imágenes/PDF del piloto.
+
+`/health` es liveness, no prueba continua de Neon: la base se comprueba al arrancar
+y admitir análisis. Por defecto no se confía en XFF; detrás del proxy puede agrupar
+usuarios en el límite IP hasta disponer de rangos verificados. Las cuotas por
+instalación/global persisten, pero UUID no autentica personas. Se documenta el
+intervalo no atómico entre COMMIT y Google, y el riesgo de perder una pausa que
+no haya podido persistirse antes de un cierre durante una caída de PostgreSQL.
+
 ## Sonda Workers — 22 de septiembre de 2026
 
 Partida limpia en 3b5fc20. Se incorpora exclusivamente una sonda local separada:

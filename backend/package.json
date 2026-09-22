@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
+    "start:prod": "node dist/backend/src/server.js",
+    "migrate": "tsx src/migrate.ts",
+    "migrate:prod": "node dist/backend/src/migrate.js",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "quota:secret": "node scripts/init-quota-secret.mjs",
@@ -22,12 +25,14 @@
     "file-type": "^21.3.4",
     "helmet": "^8.3.0",
     "multer": "^2.4.0",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.2.2"
   }

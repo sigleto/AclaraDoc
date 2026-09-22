@@ -1,10 +1,14 @@
 import { z } from "zod";
+import { isIP } from "node:net";
 import { readQuotaConfig } from "./quota-config.js";
 const envSchema = z.object({
   ANALYSIS_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_MODEL: z.string().default("gemini-3.1-flash-lite"),
   GEMINI_API_KEY: z.string().default(""),
   QUOTA_HASH_SECRET: z.string().default(""),
+  QUOTA_STORE: z.enum(["memory", "sqlite", "postgres"]).optional(),
+  DATABASE_URL: z.string().default(""),
+  TRUST_PROXY_CIDRS: z.string().default(""),
   FREE_TIER_CONFIRMED: z.enum(["true", "false"]).default("false"),
   HOST: z.string().default("127.0.0.1"),
   PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
@@ -19,6 +23,19 @@ export function readConfig(env: NodeJS.ProcessEnv) {
       "Configuración del servidor no válida. Revisa backend/.env.",
     );
   const config = parsed.data;
+  const quotaStore = config.QUOTA_STORE ?? (config.ANALYSIS_MODE === "mock" ? "memory" : "sqlite");
+  if (quotaStore === "postgres") {
+    try {
+      const url = new URL(config.DATABASE_URL);
+      if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || !url.username || !url.pathname.slice(1)) throw new Error();
+    } catch { throw new Error("PostgreSQL requiere DATABASE_URL válida en el entorno privado del backend."); }
+  }
+  const trustedProxies = config.TRUST_PROXY_CIDRS.split(",").map(value => value.trim()).filter(Boolean);
+  if (trustedProxies.some(value => {
+    const [address, prefix, extra] = value.split("/");
+    const family = isIP(address);
+    return !family || extra !== undefined || (prefix !== undefined && (!/^\d+$/.test(prefix) || Number(prefix) < 1 || Number(prefix) > (family === 4 ? 32 : 128)));
+  })) throw new Error("TRUST_PROXY_CIDRS solo admite IP o CIDR explícitos, nunca todos los proxies.");
   if (config.ANALYSIS_MODE !== "mock" && config.QUOTA_HASH_SECRET.length < 32)
     throw new Error("QUOTA_HASH_SECRET debe contener al menos 32 caracteres aleatorios en modo Gemini.");
   // Configuration is explicit; no fallback or automatic upgrade to any other model.
@@ -47,6 +64,6 @@ export function readConfig(env: NodeJS.ProcessEnv) {
     throw new Error(
       "CORS_ORIGINS requiere orígenes HTTP exactos, sin comodines ni rutas.",
     );
-  return { ...config, origins, quotas: readQuotaConfig(env) };
+  return { ...config, QUOTA_STORE: quotaStore, trustedProxies, origins, quotas: readQuotaConfig(env) };
 }
 export type Config = ReturnType<typeof readConfig>;

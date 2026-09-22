@@ -48,20 +48,22 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit && npm run typecheck --workspace backend",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace backend && npm run typecheck --workspace worker",
     "lint": "eslint .",
     "test": "tsx --test tests/*.test.ts && npm test --workspace backend",
     "check:expo": "expo install --check",
     "export:all": "expo export --platform all",
     "verify": "npm run typecheck && npm run lint && npm test && npm run check:expo",
     "backend:start": "npm run start --workspace backend",
-    "backend:dev": "npm run dev --workspace backend"
+    "backend:dev": "npm run dev --workspace backend",
+    "worker:probe": "npm run probe --workspace worker"
   },
   "private": true,
   "engines": {
     "node": ">=22.13.0"
   },
   "workspaces": [
-    "backend"
+    "backend",
+    "worker"
   ]
 }

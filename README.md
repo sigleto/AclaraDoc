@@ -1,5 +1,15 @@
 # AclaraDoc
 
+## Prueba de Workers Free — implementación detenida en viabilidad
+
+Se ha autorizado un futuro backend público JPG/JPEG/PNG conservando PDF en el
+backend local. La sonda `npm run worker:probe` supera los once casos funcionales,
+incluido 10 MiB, con el SDK oficial y transporte simulado. Las mediciones locales
+de recursos no permiten aprobar el presupuesto Free; todavía no hay backend
+público, D1 ni cambios de capacidades/interfaz. Consulta
+[worker/VIABILITY.md](worker/VIABILITY.md) para métricas, método, copias de memoria
+y límites de las conclusiones. No ejecutar despliegues a partir de esta sonda.
+
 Prototipo Expo SDK 57, React Native, Expo Router y TypeScript para explicar documentos administrativos. Backend local Node/Express con Gemini Developer API, consentimiento previo y guardado voluntario de resultados. `f5019d7` conserva la fase simulada; `3efa413` conserva el análisis funcional anterior a las cuotas, confirmado por el usuario con una factura en un móvil real.
 
 ## Instalar y probar sin consumir cuota

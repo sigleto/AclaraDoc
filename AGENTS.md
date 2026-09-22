@@ -5,6 +5,15 @@ Aplicación móvil independiente para explicar documentos administrativos en esp
 El commit 3efa413 conserva el estado funcional probado por el usuario en móvil antes de la fase de cuotas.
 
 ## Alcance autorizado
+
+El 22/09/2026 se autorizó preparar Workers + D1 Free solo para JPG/JPEG/PNG,
+conservando imágenes y PDF en Express, sin convertir PDF en el móvil. No tocar
+backend/src/pdf.ts. GLOBAL_DAILY_LIMIT sigue en 20 y el modelo no cambia.
+La implementación está detenida en la prueba de viabilidad de recursos del lote
+de 10 MiB; ver worker/VIABILITY.md. La sonda no es un backend público. No crear
+recursos, registrar secretos reales ni desplegar. No reducir límites para dar por
+superada la puerta de seguridad. La preparación posterior de secretos del Worker
+se haría solo en Cloudflare, nunca en Expo ni archivos versionados.
 La segunda fase permite enviar documentos al backend local y a Gemini Developer API, únicamente tras consentimiento. Esta instrucción sustituye la prohibición de servidores de la primera fase. No desplegar el backend ni activar facturación.
 
 ## Coste y proveedor

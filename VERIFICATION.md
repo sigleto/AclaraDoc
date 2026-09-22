@@ -1,5 +1,41 @@
 # Verificación de AclaraDoc
 
+## Sonda Workers — 22 de septiembre de 2026
+
+Partida limpia en 3b5fc20. Se incorpora exclusivamente una sonda local separada:
+multipart, comprobaciones básicas de imágenes, Base64, serialización del SDK
+oficial con transporte simulado y respuesta Zod. Once casos funcionales pasan,
+incluido seis archivos con 10 MiB. El presupuesto de recursos Free no se aprueba:
+la estimación CDP local es 191–356 ms; el contraste Node tiene mediana 156 ms.
+Estas cifras no son CPU facturada ni prueban un fallo remoto. Método, resultados,
+memoria y limitaciones completos en [worker/VIABILITY.md](worker/VIABILITY.md).
+
+Se detiene la implementación según la puerta de viabilidad; capacidades, cambios
+de Expo, D1 y Worker de producción siguen pendientes. No se modificó el parser
+PDF, no se leyeron .env ni se realizaron llamadas a Gemini. No hay recursos
+externos ni despliegue. No se crea commit de migración completada.
+
+Verificación final de esta sonda y de ausencia de regresiones:
+
+- `npm run verify`: aprobado; tipos frontend/backend/sonda, ESLint, 20 pruebas
+  de cliente, 32 de backend y compatibilidad Expo.
+- `npm run worker:probe`: once casos funcionales aprobados, incluido 10 MiB,
+  compilación esbuild en memoria y SDK ejecutado en workerd con fetch sustituido.
+  El éxito del comando no aprueba el presupuesto Free documentado.
+- `npm run build --workspace backend`: aprobado.
+- `npm run export:all`: Android, iOS y ocho rutas web exportadas.
+- Expo Doctor: 21/21 comprobaciones aprobadas.
+- `.env`, `.dev.vars`, estado `.wrangler` y bases locales están ignorados; no hay
+  archivos sensibles versionados. La revisión por patrones no detectó claves
+  Google ni claves privadas en fuentes, sonda o exportaciones. No garantiza
+  detectar cualquier secreto. Expo se ejecutó con `EXPO_NO_DOTENV=1`.
+- `git diff --check`: aprobado. Ningún archivo de `src/` ni `backend/src/` cambia;
+  las pruebas mantienen PDF local válido y rechazan PDF malformado o excesivo.
+  No se ha repetido una prueba nativa en el teléfono ni una llamada real a Google.
+- Las versiones de paquetes existentes en el lockfile se conservan; se añaden
+  las herramientas de la sonda. npm mantiene 14 avisos moderados de auditoría,
+  pendientes antes de publicación; no se aplicaron actualizaciones automáticas.
+
 ## Selección de PDF en Android — 22 de septiembre de 2026
 
 Ante el mensaje «La copia del archivo ya no está disponible», se revisó el código nativo de las dependencias instaladas. DocumentPicker 57 copia en `context.cacheDir`, mientras que FileSystem e ImagePicker usan `appContext.cacheDirectory`; FileSystem devuelve `exists=false` también cuando deniega el acceso. Esta diferencia de ámbito en Expo Go es compatible con el fallo comunicado, aunque no se ha inspeccionado el teléfono para confirmar su ruta concreta.

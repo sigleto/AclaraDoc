@@ -24,6 +24,7 @@
   ],
   "exclude": [
     "backend",
+    "worker",
     "node_modules",
     "dist"
   ]

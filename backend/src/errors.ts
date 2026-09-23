@@ -1,5 +1,6 @@
 import { QUOTA_MESSAGE } from "../../shared/analysis.js";
 import { quotaMessages } from "../../shared/quota.js";
+import { providerDetails } from "./provider-diagnostics.js";
 export const messages = {
   ...quotaMessages,
   QUOTA_EXHAUSTED: QUOTA_MESSAGE,
@@ -43,13 +44,8 @@ export class AppError extends Error {
 }
 export function providerError(error: unknown): AppError {
   if (error instanceof AppError) return error;
-  const value = error as {
-    status?: number;
-    code?: number;
-    name?: string;
-    message?: unknown;
-  } | null;
-  const status = value?.status ?? value?.code;
+  const value = providerDetails(error);
+  const status = value.httpStatus;
   if (status === 429) return new AppError("QUOTA_EXHAUSTED", 429);
   if (status === 404) return new AppError("MODEL_UNAVAILABLE", 503);
   if (status === 401 || status === 403)
@@ -64,9 +60,9 @@ export function providerError(error: unknown): AppError {
       return new AppError("PROVIDER_SCHEMA_REJECTED", 503);
     return new AppError("PROVIDER_REQUEST_REJECTED", 503);
   }
-  if (value?.name === "AbortError" || status === 504 || status === 408)
-    return new AppError("TIMEOUT", 504);
-  if (status === 500 || status === 502 || status === 503)
+  if (status === 500 || status === 502 || status === 503 || status === 504)
     return new AppError("PROVIDER_TEMPORARY_ERROR", 503);
+  if (value.name === "AbortError" || value.name === "TimeoutError" || status === 408)
+    return new AppError("TIMEOUT", 504);
   return new AppError("UNAVAILABLE", 503);
 }

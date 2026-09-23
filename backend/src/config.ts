@@ -5,6 +5,7 @@ const envSchema = z.object({
   ANALYSIS_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_MODEL: z.string().default("gemini-3.1-flash-lite"),
   GEMINI_API_KEY: z.string().default(""),
+  GEMINI_ERROR_DIAGNOSTICS: z.enum(["true", "false"]).default("true"),
   QUOTA_HASH_SECRET: z.string().default(""),
   QUOTA_STORE: z.enum(["memory", "sqlite", "postgres"]).optional(),
   DATABASE_URL: z.string().default(""),

@@ -4,7 +4,7 @@ import { AppError, providerError } from "../src/errors.js";
 import { createGeminiAnalyzer } from "../src/gemini.js";
 import { readConfig } from "../src/config.js";
 import { mockAnalysis } from "../../shared/analysis.js";
-import { DIAGNOSTIC_END, DIAGNOSTIC_PREFIX, logProviderDiagnostic, providerDiagnostic } from "../src/provider-diagnostics.js";
+import { DIAGNOSTIC_END, logProviderDiagnostic, providerDiagnostic } from "../src/provider-diagnostics.js";
 
 test("provider failures use bounded categories and omit private details", () => {
   for (const [status, message, code] of [
@@ -45,7 +45,7 @@ test("installed SDK classifies all requested HTTP errors without retries and log
   let status = 400;
   const logs: string[] = [];
   t.mock.method(Date, "now", () => DIAGNOSTIC_END - 1000);
-  t.mock.method(console, "warn", (line: string) => logs.push(line));
+  t.mock.method(console, "info", (line: string) => logs.push(line));
   t.mock.method(globalThis, "fetch", async () => {
     calls++;
     return new Response(JSON.stringify({ error: {
@@ -71,17 +71,17 @@ test("installed SDK classifies all requested HTTP errors without retries and log
     ], new AbortController().signal), { code: expected });
     assert.equal(calls, before + 1);
     assert.equal(logs.length, calls);
-    assert.ok(logs.at(-1)!.startsWith(DIAGNOSTIC_PREFIX));
-    assert.deepEqual(JSON.parse(logs.at(-1)!.slice(DIAGNOSTIC_PREFIX.length)), {
-      exceptionName: "ApiError", httpStatus: http, googleStatus: "INVALID_ARGUMENT",
-      googleReasonOrCode: "API_KEY_INVALID", message: "Request contains an invalid argument.",
-      model: "gemini-3.1-flash-lite",
-    });
+    assert.ok(logs.at(-1)!.startsWith("GEMINI_ANALYSIS "));
+    const summary = JSON.parse(logs.at(-1)!.slice("GEMINI_ANALYSIS ".length));
+    assert.deepEqual(Object.keys(summary).sort(), ["primarySaturated", "fallbackActivated", "fallbackModel", "result", "durationMs"].sort());
+    assert.equal(summary.result, expected);
+    assert.equal(summary.fallbackActivated, false);
+    assert.ok(summary.durationMs >= 0);
   }
   assert.doesNotMatch(logs.join(""), /private|synthetic|postgres|metadata|stack|response text/);
 });
 
-test("diagnostics omit arbitrary text in every field, cap messages, expire and can be disabled", async (t) => {
+test("legacy diagnostics remain bounded and are no longer emitted by the analyzer", async (t) => {
   const privateText = "private-document-key-prompt-response";
   const diagnostic = providerDiagnostic({ name: privateText, message: JSON.stringify({ error: {
     code: 503, status: privateText, message: privateText,
@@ -101,6 +101,23 @@ test("diagnostics omit arbitrary text in every field, cap messages, expire and c
   const invalidOutput = createGeminiAnalyzer(readConfig({}), async () => ({ text: privateText }));
   await assert.rejects(invalidOutput([], new AbortController().signal), { code: "INVALID_RESPONSE" });
   assert.equal(logs.length, 0);
+});
+
+test("installed SDK makes exactly two requests for saturation, with no SDK retries", async t => {
+  const urls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: unknown) => {
+    urls.push(String(input));
+    return new Response(JSON.stringify({ error: {
+      code: 503, status: "UNAVAILABLE", message: "Model experiencing high demand",
+    } }), { status: 503, headers: { "Content-Type": "application/json" } });
+  });
+  const analyze = createGeminiAnalyzer(readConfig({
+    GEMINI_API_KEY: "synthetic-test-key", GEMINI_FALLBACK_MODEL: "gemini-3.5-flash-lite",
+  }));
+  await assert.rejects(analyze([], new AbortController().signal), { code: "PROVIDER_TEMPORARY_ERROR" });
+  assert.equal(urls.length, 2);
+  assert.match(urls[0], /gemini-3\.1-flash-lite:generateContent/);
+  assert.match(urls[1], /gemini-3\.5-flash-lite:generateContent/);
 });
 
 test("installed SDK serializes the request and parses a response without external networking", async (t) => {

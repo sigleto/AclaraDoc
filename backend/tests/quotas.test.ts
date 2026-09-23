@@ -10,6 +10,7 @@ import { quotaSettings, DAY_MS } from "../src/quota-config.js";
 import { createApp, type RequestMetric } from "../src/app.js";
 import { MemoryQuotaStore, hashInstallation } from "../src/quota-store.js";
 import { SQLiteQuotaStore } from "../src/sqlite-quota-store.js";
+import { createGeminiAnalyzer } from "../src/gemini.js";
 import { mockAnalysis } from "../../shared/analysis.js";
 
 const secret = "synthetic-test-secret-not-a-production-secret";
@@ -173,4 +174,32 @@ test("two SQLite connections share the global budget and cleanup runs on app sta
   assert.equal(first.read("irrelevant", 100).global, 0);
   const response = await post(app).expect(200);
   assert.equal(response.body.quota.remaining, 2);
+});
+
+test("fallback success and failure each consume one reservation; fallback 429 opens the pause", async t => {
+  for (const status of [200, 503, 429]) {
+    const store = new MemoryQuotaStore();
+    const now = Date.UTC(2026, 8, 23);
+    const models: string[] = [];
+    const fallbackConfig = { ...config, GEMINI_FALLBACK_MODEL: "gemini-3.5-flash-lite" as const };
+    const analyze = createGeminiAnalyzer(fallbackConfig, async params => {
+      models.push(params.model);
+      if (models.length === 1 || status !== 200) throw { status: models.length === 1 ? 503 : status,
+        message: JSON.stringify({ error: { status: "UNAVAILABLE", message: "Model experiencing high demand" } }) };
+      return { text: JSON.stringify(mockAnalysis()) };
+    });
+    const app = createApp(fallbackConfig, { quotaStore: store, analyze, now: () => now });
+    t.after(() => app.locals.dispose());
+    const id = randomUUID();
+    const response = await post(app, id).expect(status);
+    assert.equal(response.body.quota.remaining, 2);
+    const counts = store.read(hashInstallation(id, secret), Math.floor(now / DAY_MS));
+    assert.equal(counts.global, 1);
+    assert.equal(counts.device, 1);
+    assert.deepEqual(models, [config.GEMINI_MODEL, fallbackConfig.GEMINI_FALLBACK_MODEL]);
+    if (status === 429) {
+      assert.equal((await post(app, id).expect(429)).body.error.retryAfterSeconds, 3600);
+      assert.equal(models.length, 2);
+    }
+  }
 });

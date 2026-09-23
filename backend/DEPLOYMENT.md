@@ -152,3 +152,39 @@ en las consolas; aquí no se ha realizado otra investigación de plataformas.
 Esto prepara un piloto, no certifica preparación para Google Play. Siguen pendientes
 pruebas remotas con imágenes/PDF, reinicio, abuso, carga, política de privacidad y
 declaraciones de datos que incluyan Render, Neon y Google antes de publicación.
+
+## Fallback opcional por saturación (23/09/2026)
+
+En Render, añadir manualmente `GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite`.
+Mantener `GEMINI_MODEL=gemini-3.1-flash-lite`. Ausente o vacío desactiva el
+fallback; cualquier otro valor se rechaza al arrancar. Google publica entrada y
+salida gratuitas para ambos en modalidad Standard en su
+[tabla de precios](https://ai.google.dev/gemini-api/docs/pricing), consultada el
+23/09/2026. Esto no verifica el plan, acceso ni cuota de una cuenta concreta.
+Mantener el proyecto sin facturación y los límites actuales.
+
+Solo un HTTP 503, estado Google `UNAVAILABLE` y mensaje de saturación
+(`high demand` o `overloaded`) del principal permiten **un** intento alternativo.
+No se activa por 400, 401, 403, 404, 429, otros errores ni respuestas inválidas.
+El alternativo nunca se reintenta. Dos 503 conservan el error temporal actual.
+Un 429 del alternativo conserva la pausa global habitual. SDK y cliente siguen
+sin reintentos automáticos.
+
+Cada análisis reserva una sola unidad interna por instalación y global, incluso
+si ambos modelos fallan. Puede hacer dos peticiones a Google, sujetas a sus cuotas
+externas. Comparte el plazo total y la señal de cancelación: no inicia el
+alternativo si el análisis ya se canceló o agotó su tiempo. No se devuelve cuota.
+
+El analizador sustituye el diagnóstico temporal detallado por una línea
+`GEMINI_ANALYSIS` con una lista cerrada: `primarySaturated`, `fallbackActivated`,
+`fallbackModel`, `result` (código fijo) y `durationMs`. Nunca incluye errores
+originales, claves, documentos, prompts ni respuestas. Las métricas HTTP
+existentes mantienen su lista permitida. `GEMINI_ERROR_DIAGNOSTICS` ya no habilita
+el antiguo diagnóstico dentro del analizador.
+
+Validación mediante proveedor sustituido y SDK con transporte simulado, sin
+llamadas reales a Gemini ni Neon. No demuestra el acceso remoto al alternativo.
+El push publica el código; el despliegue automático depende de la configuración
+actual del servicio. El Blueprint del repositorio mantiene autodeploy desactivado:
+si el servicio también lo tiene desactivado, usar "Save, rebuild, and deploy" al
+añadir la variable, o desplegar manualmente el último commit.

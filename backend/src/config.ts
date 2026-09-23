@@ -4,6 +4,7 @@ import { readQuotaConfig } from "./quota-config.js";
 const envSchema = z.object({
   ANALYSIS_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_MODEL: z.string().default("gemini-3.1-flash-lite"),
+  GEMINI_FALLBACK_MODEL: z.enum(["", "gemini-3.5-flash-lite"]).default(""),
   GEMINI_API_KEY: z.string().default(""),
   GEMINI_ERROR_DIAGNOSTICS: z.enum(["true", "false"]).default("true"),
   QUOTA_HASH_SECRET: z.string().default(""),
@@ -39,7 +40,7 @@ export function readConfig(env: NodeJS.ProcessEnv) {
   })) throw new Error("TRUST_PROXY_CIDRS solo admite IP o CIDR explícitos, nunca todos los proxies.");
   if (config.ANALYSIS_MODE !== "mock" && config.QUOTA_HASH_SECRET.length < 32)
     throw new Error("QUOTA_HASH_SECRET debe contener al menos 32 caracteres aleatorios en modo Gemini.");
-  // Configuration is explicit; no fallback or automatic upgrade to any other model.
+  // The primary model is unchanged; only the explicitly configured fallback is allowed.
   if (config.GEMINI_MODEL !== "gemini-3.1-flash-lite")
     throw new Error("Esta prueba gratuita solo permite gemini-3.1-flash-lite.");
   if (

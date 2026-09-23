@@ -8,7 +8,7 @@ const file = {
   buffer: Buffer.from("synthetic"),
 } as Express.Multer.File;
 const config = readConfig({});
-test("real mode requires free-tier confirmation and key; never switches models", () => {
+test("real mode requires free-tier confirmation and key; only allows explicitly authorized models", () => {
   assert.throws(() => readConfig({ ANALYSIS_MODE: "gemini" }));
   assert.throws(() =>
     readConfig({ ANALYSIS_MODE: "gemini", GEMINI_API_KEY: "synthetic" }),
@@ -109,4 +109,82 @@ test("output protection omits common identifiers without changing dates", () => 
     /12345678Z|test@example|612 345|2100 0418|ES0021/,
   );
   assert.equal(cleaned.fechasDetectadas[0].fechaISO, "2026-09-20");
+});
+
+const fallbackConfig = readConfig({ GEMINI_FALLBACK_MODEL: "gemini-3.5-flash-lite" });
+const saturated = { status: 503, message: JSON.stringify({ error: {
+  code: 503, status: "UNAVAILABLE", message: "Model experiencing high demand. private-document",
+} }) };
+
+test("fallback is opt-in and only accepts the authorized alternative", () => {
+  assert.equal(config.GEMINI_FALLBACK_MODEL, "");
+  assert.throws(() => readConfig({ GEMINI_FALLBACK_MODEL: "other-model" }));
+});
+
+test("saturation uses exactly one fallback with the same contents and cancellation signal", async t => {
+  const logs: string[] = [];
+  t.mock.method(console, "info", (line: string) => logs.push(line));
+  const models: string[] = [];
+  const controller = new AbortController();
+  let contents: unknown;
+  const analyze = createGeminiAnalyzer(fallbackConfig, async params => {
+    models.push(params.model);
+    assert.equal(params.config?.abortSignal, controller.signal);
+    if (models.length === 1) { contents = params.contents; throw saturated; }
+    assert.equal(params.contents, contents);
+    return { text: JSON.stringify(mockAnalysis()) };
+  });
+  assert.equal((await analyze([file], controller.signal)).titulo, mockAnalysis().titulo);
+  assert.deepEqual(models, [config.GEMINI_MODEL, fallbackConfig.GEMINI_FALLBACK_MODEL]);
+  const summary = JSON.parse(logs[0].slice("GEMINI_ANALYSIS ".length));
+  assert.equal(summary.primarySaturated, true);
+  assert.equal(summary.fallbackActivated, true);
+  assert.equal(summary.fallbackModel, "gemini-3.5-flash-lite");
+  assert.equal(summary.result, "OK");
+  assert.doesNotMatch(logs.join(""), /private|synthetic|high demand/);
+});
+
+test("other errors, generic 503, validation and disabled fallback never switch", async () => {
+  const errors = [400, 401, 403, 404, 429, 500, 502, 504].map(status => ({ ...saturated, status }));
+  errors.push({ status: 503, message: "Service unavailable" });
+  errors.push({ status: 503, message: JSON.stringify({ error: { status: "INTERNAL", message: "high demand" } }) });
+  for (const error of errors) {
+    let calls = 0;
+    const analyze = createGeminiAnalyzer(fallbackConfig, async () => { calls++; throw error; });
+    await assert.rejects(analyze([file], new AbortController().signal));
+    assert.equal(calls, 1);
+  }
+  for (const text of [undefined, "not JSON", "{}", "x".repeat(70001)]) {
+    let calls = 0;
+    const analyze = createGeminiAnalyzer(fallbackConfig, async () => { calls++; return { text }; });
+    await assert.rejects(analyze([file], new AbortController().signal), { code: "INVALID_RESPONSE" });
+    assert.equal(calls, 1);
+  }
+  let calls = 0;
+  await assert.rejects(createGeminiAnalyzer(config, async () => { calls++; throw saturated; })([file], new AbortController().signal));
+  assert.equal(calls, 1);
+});
+
+test("fallback failure never retries and two saturated models keep the temporary error", async () => {
+  for (const status of [400, 401, 403, 404, 429, 503]) {
+    let calls = 0;
+    const analyze = createGeminiAnalyzer(fallbackConfig, async () => {
+      calls++;
+      throw calls === 1 ? saturated : { ...saturated, status };
+    });
+    await assert.rejects(analyze([file], new AbortController().signal), status === 503
+      ? { code: "PROVIDER_TEMPORARY_ERROR", message: "Google ha devuelto un error temporal de su servicio. Inténtalo más tarde." }
+      : { status: status === 429 ? 429 : 503 });
+    assert.equal(calls, 2);
+  }
+});
+
+test("cancellation prevents starting fallback", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const analyze = createGeminiAnalyzer(fallbackConfig, async () => {
+    calls++; controller.abort(); throw saturated;
+  });
+  await assert.rejects(analyze([file], controller.signal), { code: "CANCELLED" });
+  assert.equal(calls, 1);
 });

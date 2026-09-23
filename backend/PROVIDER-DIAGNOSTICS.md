@@ -1,5 +1,10 @@
 # Diagnóstico temporal de Gemini — 23/09/2026
 
+> Referencia histórica: el analizador ya no emite `GEMINI_PROVIDER_DIAGNOSTIC`.
+> Para el fallback y los errores de contrato, consultar las secciones finales de
+> [DEPLOYMENT.md](DEPLOYMENT.md). Los prefijos actuales son `GEMINI_ANALYSIS` y
+> `GEMINI_RESPONSE_VALIDATION`; no requieren activar nuevas variables.
+
 Autorizado por el usuario para el servicio que comunica como Live en Render.
 No se han hecho llamadas reales a Gemini ni conexiones a Neon en estas pruebas.
 

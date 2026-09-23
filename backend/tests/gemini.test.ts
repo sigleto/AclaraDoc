@@ -136,7 +136,7 @@ test("saturation uses exactly one fallback with the same contents and cancellati
   });
   assert.equal((await analyze([file], controller.signal)).titulo, mockAnalysis().titulo);
   assert.deepEqual(models, [config.GEMINI_MODEL, fallbackConfig.GEMINI_FALLBACK_MODEL]);
-  const summary = JSON.parse(logs[0].slice("GEMINI_ANALYSIS ".length));
+  const summary = JSON.parse(logs.find(line => line.startsWith("GEMINI_ANALYSIS "))!.slice("GEMINI_ANALYSIS ".length));
   assert.equal(summary.primarySaturated, true);
   assert.equal(summary.fallbackActivated, true);
   assert.equal(summary.fallbackModel, "gemini-3.5-flash-lite");

@@ -188,3 +188,54 @@ El push publica el código; el despliegue automático depende de la configuraci�
 actual del servicio. El Blueprint del repositorio mantiene autodeploy desactivado:
 si el servicio también lo tiene desactivado, usar "Save, rebuild, and deploy" al
 añadir la variable, o desplegar manualmente el último commit.
+
+## Diagnóstico de respuestas y contrato (23/09/2026)
+
+Después del despliegue, realizar **un único intento** con consentimiento y buscar
+`GEMINI_RESPONSE_VALIDATION ` en los logs. No requiere variables nuevas. `model`
+identifica el modelo que entregó esa respuesta; `GEMINI_ANALYSIS` conserva el
+resumen del fallback y el resultado final. No deducir que hubo fallback solo
+porque desapareció el 503.
+
+La nueva línea contiene únicamente metadatos: modelo permitido, `finishReason`
+de una lista cerrada, `textExists`, `textLength`, `jsonParsed`, rutas de campos
+recibidos (`receivedFields`), rutas/códigos iniciales (`issues`), campos ausentes
+(`missingFields`), tipos incorrectos (`wrongTypeFields`), rutas normalizadas
+(`normalizedFields`) y errores pendientes (`finalIssues`). No se serializan
+mensajes de Zod, valores, texto ni excepciones. Los nombres de propiedades ajenas
+al contrato se sustituyen por `[unknown]`; cada lista diagnóstica está acotada.
+`jsonParsed=true` incluye JSON recuperado de un único bloque Markdown completo;
+en ese caso `issues` contiene `markdown_fence`. No extrae fragmentos de prosa ni
+repara JSON truncado. `MAX_TOKENS` o cualquier finalización distinta de `STOP`
+se rechazan aunque el JSON llegue a parsearse; un motivo ausente se registra null.
+
+Discrepancia reproducida **con datos sintéticos**, no confirmada para el documento
+del usuario: el esquema compacto de generación no incluye mínimos de longitud ni
+el patrón de fecha que sí valida el contrato interno. Por ejemplo,
+`organismoEmisor` vacío produce `too_small`; una `fechaISO` vacía produce
+`invalid_format`. Solo se convierten cadenas vacías/espacios a null en
+`organismoEmisor`, `tipoComunicacion`, `motivoRevisionProfesional`,
+`fechasDetectadas[].fechaISO` y `plazos[].fechaNotificacion/fechaLimite`.
+No se rellenan campos ausentes. Si se necesita revisión y falta su motivo,
+`missing_review_reason` conserva el rechazo. Fechas ambiguas o imposibles,
+cantidades numéricas en campos de texto, listas como texto, JSON inválido y
+campos esenciales vacíos siguen rechazándose. Los campos adicionales se eliminan
+por la lista permitida Zod existente; no pasan al cliente ni al historial.
+
+Ambos modelos comparten exactamente `responseJsonSchema`, instrucciones, ruta de
+normalización y validación final, también después del filtro de salida. No se
+cambia a otro modelo por un fallo de validación. Se han explicitado en el prompt
+las restricciones locales sin ampliar el esquema de generación que ya se redujo
+para evitar rechazos por complejidad.
+[Google documenta salida estructurada para el fallback](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)
+y advierte que [el esquema no garantiza corrección semántica](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
+Las pruebas del SDK comprueban serialización, extracción y finishReason mediante
+fetch sustituido; no certifican compatibilidad remota ni acceso de la cuenta.
+
+Interpretación tras el intento: `issues` muestra la incompatibilidad inicial y
+`finalIssues` el motivo exacto de rechazo. `finalIssues=[]` junto con
+`GEMINI_ANALYSIS.result=OK` confirma contrato final válido. Por ejemplo, una ruta
+`["organismoEmisor"]`, código `too_small`, incluida en `normalizedFields` y sin
+errores finales confirma la recuperación del caso vacío. `MAX_TOKENS` indica
+truncamiento, no un problema del PDF. No se han consultado logs remotos en esta
+sesión por falta de acceso; la causa concreta del documento requiere esta línea.

@@ -1,0 +1,12 @@
+Background: #092B60 (dominant blue sampled from the reference). Safe radius: 66/108*1024/2 = 312.89 px.
+Master mask 0: 0 artwork pixels clipped (full canvas).
+Master mask 1: 0 artwork pixels clipped (full canvas).
+Master mask 2: 0 artwork pixels clipped (full canvas).
+app-icon-1024.png: 1024x1024; PNG RGBA 8-bit/channel (32-bit); 292035 bytes; pixels alpha<255=0; min alpha=255; max visible radius=723,37
+android-foreground.png: 1024x1024; PNG RGBA 8-bit/channel (32-bit); 167604 bytes; pixels alpha<255=1046865; min alpha=0; max visible radius=299,96
+android-background.png: 1024x1024; PNG RGBA 8-bit/channel (32-bit); 6539 bytes; pixels alpha<255=0; min alpha=255; max visible radius=723,37
+android-monochrome.png: 1024x1024; PNG RGBA 8-bit/channel (32-bit); 20684 bytes; pixels alpha<255=1046865; min alpha=0; max visible radius=299,96
+play-store-512.png: 512x512; PNG RGBA 8-bit/channel (32-bit); 91516 bytes; pixels alpha<255=0; min alpha=255; max visible radius=361,33
+Circle: 0 foreground pixels clipped (72/108 viewport).
+Rounded square: 0 foreground pixels clipped (72/108 viewport).
+Squircle: 0 foreground pixels clipped (72/108 viewport).

@@ -1,0 +1,35 @@
+{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "developmentClient": false,
+      "environment": "preview",
+      "node": "22.23.2",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://aclaradoc.onrender.com",
+        "EXPO_NO_DOTENV": "1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "environment": "production",
+      "node": "22.23.2",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://aclaradoc.onrender.com",
+        "EXPO_NO_DOTENV": "1"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

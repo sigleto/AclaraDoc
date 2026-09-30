@@ -41,7 +41,7 @@ Para probar todo el circuito HTTP sin Google:
 4. Abre http://localhost:3001/health. Debe devolver status=ok y mode=mock.
 5. Selecciona una imagen de prueba o PDF, acepta el consentimiento y analiza. El backend valida los archivos pero devuelve un ejemplo, sin contactar con Google.
 
-El consentimiento se conserva únicamente durante la sesión. Cancelar ese aviso no envía nada y conserva la selección. Tras un intento de análisis (éxito, error o cancelación) se limpian las copias de los adjuntos. El resultado solo se persiste al pulsar Guardar resultado.
+El consentimiento documental se conserva únicamente durante la sesión. Cancelar ese aviso no envía documentos y conserva la selección. Tras un intento de análisis (éxito, error o cancelación) se limpian las copias de los adjuntos. El resultado solo se persiste al pulsar Guardar resultado. La publicidad tiene consentimiento y conexiones independientes, también en modo mock documental.
 
 ## Crear una clave gratuita de Gemini
 
@@ -191,3 +191,10 @@ La limpieza elimina filas anteriores al periodo configurado. No contiene IP, arc
 ## Pendiente antes de publicar
 
 HTTPS, protección contra abuso e identificadores falsificados, límites coordinados entre procesos, almacenamiento fuera de carpetas sincronizadas, política y retención de datos del proveedor revisadas para uso público, pruebas nativas Android/iOS y una revisión de dependencias. Esta fase no despliega, activa facturación, crea cuentas personales ni publica la app.
+
+## Publicidad Android
+
+La integración AdMob, sus pruebas, consentimiento UMP, privacidad y tareas
+manuales previas a publicar están descritas en [ADMOB_SETUP.md](ADMOB_SETUP.md).
+Expo Go, web e iOS siguen sin anuncios. Los APK preview usan unidades de prueba;
+solo el perfil production con bundle release permite unidades reales.

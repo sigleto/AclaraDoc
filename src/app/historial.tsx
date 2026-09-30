@@ -11,12 +11,13 @@ import {
   Title,
 } from "../components/ui";
 import { useApp } from "../state/AppProvider";
+import { AdBanner } from "../ads/AdBanner";
 export default function History() {
   const app = useApp();
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
   return (
-    <Screen>
+    <Screen footer={<AdBanner placement="/historial" blocked={confirm || !!app.error || app.busy || !!app.document || !app.ready} />}>
       <Title>Tu historial</Title>
       <Copy>
         Hasta 50 resultados guardados en este dispositivo, sin imágenes, PDF ni

@@ -1,12 +1,13 @@
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-export function Screen({ children }: PropsWithChildren) {
+export function Screen({ children, footer }: PropsWithChildren<{ footer?: ReactNode }>) {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      <ScrollView contentContainerStyle={styles.screen}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.screen}>
         <View style={styles.content}>{children}</View>
       </ScrollView>
+      {footer}
     </SafeAreaView>
   );
 }

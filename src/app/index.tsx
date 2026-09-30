@@ -1,4 +1,6 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { AdBanner } from "../ads/AdBanner";
 import {
   Action,
   Card,
@@ -15,8 +17,9 @@ import { usesBackend } from "../services/analysis";
 export default function Home() {
   const router = useRouter();
   const app = useApp();
+  const [selectionBlocked, setSelectionBlocked] = useState(false);
   return (
-    <Screen>
+    <Screen footer={<AdBanner placement="/" blocked={selectionBlocked || !!app.error || app.busy || !!app.document} />}>
       <Copy>ENTIENDE TUS DOCUMENTOS</Copy>
       <Title>Más claridad. Un paso a la vez.</Title>
       <Copy>
@@ -30,7 +33,7 @@ export default function Home() {
           Puedes añadir varias fotos, seleccionar imágenes JPG/PNG o adjuntar
           PDF completos de varias páginas.
         </Copy>
-        <DocumentActions />
+        <DocumentActions onAdSafetyChange={setSelectionBlocked} />
       </Card>
       {!!app.document?.pages.length && (
         <Action
@@ -42,7 +45,7 @@ export default function Home() {
       <Copy>
         {usesBackend
           ? "Análisis mediante tu backend local. Antes del primer envío se pedirá tu consentimiento para el tratamiento con Google Gemini. Guarda el resultado solo si lo deseas."
-          : "Modo mock local: sin envíos ni consumo de cuota. Los resultados son ficticios y solo se guardan si lo solicitas."}
+          : "Modo mock local: sin envío de documentos ni consumo de cuota de análisis. Los resultados son ficticios y solo se guardan si lo solicitas. La publicidad usa conexiones independientes cuando está habilitada."}
       </Copy>
       <Action
         title="Ver historial"

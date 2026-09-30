@@ -1,4 +1,7 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useRef } from "react";
+import { AppState } from "react-native";
+import { useAds } from "../ads/AdsProvider";
 import {
   Action,
   Card,
@@ -30,9 +33,19 @@ function Statements({ items }: { items: Statement[] }) {
   );
 }
 export default function Result() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, fresh } = useLocalSearchParams<{ id?: string; fresh?: string }>();
   const app = useApp();
   const router = useRouter();
+  const ads = useAds();
+  const enteredAt = useRef(0);
+  const focused = useRef(false);
+  const leaving = useRef(false);
+  useFocusEffect(useCallback(() => {
+    enteredAt.current = Date.now();
+    focused.current = true;
+    leaving.current = false;
+    return () => { focused.current = false; };
+  }, []));
   const result =
     app.currentResult?.id === id
       ? app.currentResult
@@ -47,6 +60,20 @@ export default function Result() {
     );
   const a = result.analysis;
   const saved = app.history.some((r) => r.id === result.id);
+  function goHome() {
+    if (leaving.current) return;
+    leaving.current = true;
+    const navigate = () => router.replace("/");
+    if (fresh !== '1' || app.currentResult !== result || app.error || app.busy || Date.now() - enteredAt.current < 5000) {
+      navigate();
+      return;
+    }
+    ads.controller.leaveResult(navigate, () => {
+      const allowed = focused.current && AppState.currentState === 'active';
+      if (!allowed) leaving.current = false;
+      return allowed;
+    });
+  }
   return (
     <Screen>
       <Title>{a.titulo}</Title>
@@ -179,7 +206,7 @@ export default function Result() {
         secondary
         onPress={() => router.push("/historial")}
       />
-      <Action title="Volver al inicio" onPress={() => router.replace("/")} />
+      <Action title="Volver al inicio" onPress={goHome} />
     </Screen>
   );
 }

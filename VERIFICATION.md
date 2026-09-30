@@ -1,5 +1,61 @@
 # Verificación de AclaraDoc
 
+## AdMob Android — 30 de septiembre de 2026
+
+Partida limpia: `f7cd660`. Integración Android con
+`react-native-google-mobile-ads@17.2.0`, Expo 57.0.26, React Native 0.86.3.
+Versión visible 1.1.0, versionCode 2 (antes 1), package sin cambios.
+Guía y pasos manuales en [ADMOB_SETUP.md](ADMOB_SETUP.md).
+
+- `npm run verify`: aprobado, incluidos tipos frontend/backend/Workers, ESLint,
+  **33/33 pruebas de cliente y 64/64 de backend (97/97)** y compatibilidad Expo.
+  Trece pruebas nuevas cubren IDs, consentimiento, frecuencia, errores,
+  persistencia, navegación y ubicaciones. Dobles de SDK publicitario, Gemini y
+  PostgreSQL: sin llamadas reales a esos servicios.
+- `npm run export:all`: aprobado para Android/iOS/web; ocho rutas estáticas.
+  Se repitió tras los parches Expo porque cambiaban las dependencias del bundle.
+- `npm run build --workspace backend`: aprobado. No se inicia el servidor.
+- Expo Doctor: **21/21** tras aplicar ocho parches dentro del SDK 57. La primera
+  ejecución detectó versiones pendientes; no se excluyeron comprobaciones.
+  Se actualizaron @expo/ui, expo, expo-constants, expo-document-picker,
+  expo-glass-effect, expo-image-picker, expo-linking y expo-router, junto a sus
+  transitivas necesarias. No cambia el código de procesamiento de documentos.
+- Prebuild Android: plugin confirmado en manifest, ID de ejemplo en preview y
+  DELAY_APP_MEASUREMENT_INIT=true. Lectura independiente de configuración de
+  production confirma ID real, versión/code y selector real; configuración con
+  ACLARADOC_ADS_ENABLED=false confirma desactivación. No se generó AAB.
+- Autolinking de iOS: AdMob ausente. El aviso genérico del plugin sobre iosAppId
+  no implica SDK enlazado; iOS y web usan alternativas sin anuncios.
+- `git diff --exit-code` confirma backend/, worker/, shared/, src/services/,
+  src/state/, render.yaml y eas.json intactos. También se compararon las versiones
+  del árbol de dependencias de ejecución del backend: ninguna cambia. Los commits
+  protegidos f5019d7 y 3efa413 siguen presentes, sin reescribir historia.
+- Revisión de secretos por patrones en líneas añadidas y archivos nuevos: sin
+  claves Google, claves privadas ni credenciales PostgreSQL. No se abrieron .env
+  reales; EXPO_NO_DOTENV=1 en comprobaciones Expo. .env, backend/.env, android/,
+  .expo/ y dist/ permanecen ignorados. Los IDs de AdMob son públicos.
+- `npm audit`: 18 avisos (17 moderados y 1 alto). El alto corresponde a undici en
+  el árbol existente de herramientas Workers; los avisos transitivos de AdMob
+  proceden de su peer Expo. No se aplicaron degradaciones ni `audit fix --force`;
+  requieren revisión separada, especialmente antes de distribuir. La auditoría
+  no es una garantía de seguridad.
+
+La compilación local `assembleRelease` del perfil preview terminó correctamente
+(617 tareas). El APK ARM64 de 46.282.948 bytes tiene SHA-256
+`038D7F617EE5F24FE6D8983729E7B00E6392FCF93490A0DA75B742D6CC7365F6` y firma
+de depuración; es solo evidencia local y no un artefacto publicable. `aapt` confirma
+package `com.sigleto.aclaradoc`, versión 1.1.0, versionCode 2, minSdk 24,
+target/compileSdk 36, App ID oficial de ejemplo y medición inicial retrasada. El
+manifest fusionado contiene AD_ID y los tres permisos AdServices aportados por el
+SDK, además de INTERNET/ACCESS_NETWORK_STATE y los permisos existentes de Expo y
+la app. No solicita ubicación ni audio. La compilación en la ruta de OneDrive
+tropezó con rutas Ninja regeneradas; una copia temporal en `C:\admob-build` evitó
+esa limitación sin cambiar el repositorio.
+
+No se han instalado aplicaciones en dispositivos, pulsado anuncios, validado
+formularios UMP reales ni modificado AdMob, la política pública, Play Console,
+Render o Neon. No se han consumido créditos EAS, generado AAB ni hecho push.
+
 ## Preparación Render + Neon — 22 de septiembre de 2026
 
 Partida limpia: `968405a682d1d1fdbaccff43b00778b3ff05f602`. Se prepara el backend

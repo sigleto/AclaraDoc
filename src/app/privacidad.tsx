@@ -1,10 +1,12 @@
 import { Card, Copy, Heading, Notice, Screen, Title } from "../components/ui";
 import { CONSENT_TEXT } from "../../shared/analysis";
+import { AdPrivacy } from "../ads/AdPrivacy";
 export default function Privacy() {
   return (
     <Screen>
       <Title>Tu documento, bajo tu control</Title>
       <Notice />
+      <AdPrivacy />
       <Card>
         <Heading>Análisis y consentimiento</Heading>
         <Copy>{CONSENT_TEXT}</Copy>
@@ -34,7 +36,7 @@ export default function Privacy() {
       <Card>
         <Heading>Qué se guarda</Heading>
         <Copy>
-          La aplicación crea un identificador aleatorio, sin usar teléfono,
+          Para controlar la cuota de análisis se crea un identificador aleatorio, sin usar teléfono,
           correo ni identificadores del dispositivo. En el móvil se guarda en
           el almacén seguro del sistema; en web, en el almacenamiento local del
           navegador. No contiene datos de identidad ni crea una cuenta.

@@ -15,9 +15,9 @@ cuenta. `eas.json` conserva preview APK, production app-bundle y la URL Render.
 - `ads.config.ts` centraliza identificadores públicos y selección tipada de
   unidades. `app.config.ts` extiende app.json con el plugin oficial y
   `delayAppMeasurementInit: true`; usa el `tsx` ya instalado para importar TS.
-- `src/ads/core.ts`: consentimiento, inicialización única por proceso JS,
-  frecuencia, reserva persistente y ciclo de vida del intersticial, con SDK y
-  almacenamiento sustituibles en pruebas. El singleton sobrevive Fast Refresh.
+- `src/ads/core.ts`: consentimiento, inicialización única por proceso JS y ciclo
+  de vida del intersticial, con el SDK sustituible en pruebas. El singleton
+  sobrevive Fast Refresh.
   Un reinicio completo de JS vuelve a consultar UMP; el SDK nativo inicializa de
   forma idempotente.
 - `sdk.android.ts` es el único adaptador que importa el SDK, después de descartar
@@ -28,7 +28,7 @@ cuenta. `eas.json` conserva preview APK, production app-bundle y la URL Render.
   app en primer plano. Las pantallas solo reciben estado y acciones publicitarias.
   El backend, Gemini, cuotas, procesamiento e historial de documentos no cambian.
 
-## Ubicaciones y frecuencia
+## Ubicaciones
 
 Banner adaptativo anclado al pie, fuera del ScrollView y dentro del área segura,
 solo en inicio e historial. Cada banner exige su ruta concreta; las pantallas
@@ -38,25 +38,18 @@ durante selección, con adjuntos pendientes, análisis, errores o confirmación 
 borrado. Fallar la carga desmonta el banner sin dejar un hueco grande; se puede
 intentar de nuevo al volver a la pantalla. No hay temporizador de refresco propio.
 
-Intersticial únicamente al pulsar **Volver al inicio** en un resultado nuevo,
-después de al menos cinco segundos de consulta y sin error. Atrás del sistema,
-cabecera, historial y otras salidas continúan sin intersticial. Nunca se muestra
-al iniciar ni en revisión, consentimiento documental, subida o análisis.
+Después de cada análisis completado se intenta mostrar un intersticial cargado
+justo antes de presentar el resultado. La llamada nativa para mostrarlo ocurre
+antes de cambiar a la ruta de resultado, que queda detrás del anuncio hasta que
+el usuario lo cierre. No se muestra al iniciar, al seleccionar documentos, durante
+el consentimiento documental, la subida o el análisis, ni al abrir el historial.
 
-Se exige un mínimo de tres análisis completados desde el último intento de mostrar
-un intersticial y cinco minutos de separación. Primer y segundo análisis no lo
-muestran. Los resultados simulados cuentan en pruebas, pero no en producción.
-Reabrir un resultado del historial no cuenta. AsyncStorage conserva únicamente
-`completed` (0–3) y `lastAttemptAt` bajo `aclaradoc.ads.frequency.v1`.
-No conserva IDs de resultados ni de instalación. Si no puede leer o escribir,
-desactiva intersticiales conservadoramente para esa sesión.
-
-Sin inventario listo la navegación es inmediata. Con inventario listo se reserva
-el intervalo en disco antes de mostrar; la espera de esa reserva está acotada a
-500 ms. Ni carga ni cierre ni promesas del SDK bloquean la navegación. Un fallo al
-mostrar también consume el intervalo. Inventario con 55 minutos de antigüedad se
-descarta. Cierre/error destruye listeners e instancia; la siguiente precarga tiene
-una espera mínima de 60 segundos y solo se realiza en un contexto permitido.
+Sin consentimiento o inventario listo, con la app en segundo plano, si el anuncio
+ha caducado o si el SDK falla, el resultado aparece inmediatamente. No se espera
+a que cargue un anuncio. Un cierre/error destruye listeners e instancia y prepara
+la siguiente unidad; los fallos de carga tienen un reintento controlado a los 60
+segundos. El inventario con 55 minutos de antigüedad se descarta. No se guarda un
+contador publicitario ni se vincula la decisión con el resultado o la instalación.
 
 ## Consentimiento UMP
 
@@ -127,11 +120,11 @@ Comprobar en emulador/dispositivo, sin pulsar anuncios reales:
 1. Inicio e historial: banner de prueba, área segura, letra grande, pantalla
    pequeña, navegación Android, TalkBack y ausencia de hueco al fallar la red.
 2. Selección, cancelación, error, revisión y análisis: ninguna publicidad visible.
-3. Tres análisis mock; esperar cinco segundos leyendo cada resultado y volver al
-   inicio con el botón. Solo el tercero es candidato. Repetir tres antes de cinco
-   minutos: no mostrar. Reabrir historial: no cuenta. Reiniciar: conservar límite.
-4. Inventario sin cargar y modo avión: navegación inmediata. Pulsaciones repetidas,
-   segundo plano durante la reserva, fallo de almacenamiento y fallo de show.
+3. Completar varios análisis mock: si hay inventario, cada uno debe intentar un
+   intersticial de prueba antes de que se vea el resultado. Abrir un resultado del
+   historial no debe mostrarlo.
+4. Inventario sin cargar, modo avión, segundo plano y fallo de show: el resultado
+   debe aparecer inmediatamente, sin esperar a la publicidad.
 5. UMP: en AdMob debe existir un mensaje europeo publicado para esta app,
    incluyendo EEE, Reino Unido y Suiza. Probar aceptar, rechazar, modificar opciones,
    primera sesión offline y sesión offline con preferencias anteriores. El App ID
@@ -151,8 +144,8 @@ La pantalla de privacidad incluye AdMob y separa los dos consentimientos. Trasla
 ese bloque a la política pública alojada indicada en Google Play y AdMob; este
 cambio local no actualiza ninguna web. Debe indicar Google AdMob, identificadores
 de dispositivo, IP/ubicación aproximada derivada, interacciones, diagnósticos,
-publicidad, medición y prevención del fraude; cómo modificar preferencias UMP y
-el contador local. Mantener información completa del flujo documental y sus
+publicidad, medición y prevención del fraude, y cómo modificar preferencias UMP.
+Mantener información completa del flujo documental y sus
 proveedores. No afirmar que la aplicación no recoge o comparte datos.
 
 En Play Console revisar **Contiene anuncios**, declaración de **ID de publicidad**

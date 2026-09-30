@@ -1,5 +1,3 @@
-export const ADS_STORAGE_KEY = 'aclaradoc.ads.frequency.v1';
-export const COOLDOWN_MS = 5 * 60_000;
 const MAX_AGE_MS = 55 * 60_000;
 const RETRY_MS = 60_000;
 
@@ -20,21 +18,10 @@ export interface AdsDriver {
   initialize(): Promise<unknown>;
   interstitial(events: { loaded(): void; ended(): void }): AdHandle;
 }
-interface Frequency { completed: number; lastAttemptAt: number }
 export interface AdsState { ready: boolean; privacyRequired: boolean; resolving: boolean }
 
 export function bannerAllowed(path: string, blocked: boolean): boolean {
   return !blocked && (path === '/' || path === '/historial');
-}
-
-function decodeFrequency(raw: string | null): Frequency {
-  if (raw === null) return { completed: 0, lastAttemptAt: 0 };
-  const value: unknown = JSON.parse(raw);
-  if (!value || typeof value !== 'object') throw new Error('Invalid frequency');
-  const { completed, lastAttemptAt } = value as Frequency;
-  if (!Number.isInteger(completed) || completed < 0 || completed > 3 ||
-      !Number.isSafeInteger(lastAttemptAt) || lastAttemptAt < 0) throw new Error('Invalid frequency');
-  return { completed, lastAttemptAt };
 }
 
 // SDK receives no application objects, document fields, installation IDs or history.
@@ -43,9 +30,6 @@ export class AdsController {
   private listeners = new Set<() => void>();
   private started?: Promise<void>;
   private initialized?: Promise<unknown>;
-  private frequency?: Frequency;
-  private writes: Promise<void>;
-  private pendingWrites = 0;
   private ad?: AdHandle;
   private loadedAt: number | null = null;
   private nextLoadAt = 0;
@@ -57,14 +41,8 @@ export class AdsController {
 
   constructor(
     private driver: AdsDriver | null,
-    private storage: { get(): Promise<string | null>; set(value: string): Promise<void> },
     private now = Date.now,
-  ) {
-    this.writes = storage.get().then(raw => { this.frequency = decodeFrequency(raw); }).catch(() => {
-      // Fail closed for interstitials; advertising never breaks document use.
-      this.frequency = undefined;
-    });
-  }
+  ) {}
 
   snapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -121,20 +99,6 @@ export class AdsController {
       this.update({ resolving: false });
     }
   }
-  recordCompletion(): Promise<void> {
-    return this.writeFrequency(() => {
-      if (this.frequency) this.frequency.completed = Math.min(3, this.frequency.completed + 1);
-    });
-  }
-  private writeFrequency(change: () => void): Promise<void> {
-    this.pendingWrites++;
-    this.writes = this.writes.then(async () => {
-      if (!this.frequency) return;
-      change();
-      await this.storage.set(JSON.stringify(this.frequency));
-    }).catch(() => { this.frequency = undefined; }).finally(() => { this.pendingWrites--; });
-    return this.writes;
-  }
   private dropAd() {
     this.generation++;
     this.loadedAt = null;
@@ -156,48 +120,33 @@ export class AdsController {
           if (generation !== this.generation) return;
           this.presenting = false;
           this.dropAd();
-          this.nextLoadAt = this.now() + RETRY_MS;
+          this.nextLoadAt = this.now();
+          setTimeout(() => this.preload(), 0);
         },
       });
       this.ad.load();
     } catch { this.dropAd(); }
   }
-  // Navigation never waits for loading, showing, dismissal or native SDK promises.
-  leaveResult(navigate: () => void, stillAllowed: () => boolean): void {
+  // The native overlay is requested first; the result route is then placed behind it.
+  // Missing inventory, consent or SDK failures always continue to the result.
+  showBeforeResult(navigate: () => void, canShow: () => boolean): void {
     if (this.presenting) { navigate(); return; }
     const time = this.now();
-    if (!this.state.ready || this.state.resolving || !this.frequency || this.pendingWrites ||
-        this.frequency.completed < 3 || !this.ad || this.loadedAt === null ||
-        time - this.loadedAt >= MAX_AGE_MS ||
-        (this.frequency.lastAttemptAt !== 0 && time - this.frequency.lastAttemptAt < COOLDOWN_MS)) {
+    if (!this.state.ready || this.state.resolving || !this.ad || this.loadedAt === null ||
+        time - this.loadedAt >= MAX_AGE_MS || !canShow()) {
       navigate();
       return;
     }
     this.presenting = true;
     const ad = this.ad;
     const generation = this.generation;
-    // Persist the reservation before show, including a failed presentation.
-    const write = this.writeFrequency(() => {
-      this.frequency = { completed: 0, lastAttemptAt: time };
-    });
-    let finished = false;
-    const finish = (saved: boolean) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      if (!stillAllowed()) { this.presenting = false; return; }
-      if (saved && this.frequency && this.state.ready && generation === this.generation) {
-        const failed = () => {
-          if (generation !== this.generation) return;
-          this.presenting = false;
-          this.dropAd();
-          this.nextLoadAt = this.now() + RETRY_MS;
-        };
-        try { void ad.show().catch(failed); } catch { failed(); }
-      } else { this.presenting = false; }
-      navigate();
+    const failed = () => {
+      if (generation !== this.generation) return;
+      this.presenting = false;
+      this.dropAd();
+      this.nextLoadAt = this.now() + RETRY_MS;
     };
-    const timer = setTimeout(() => finish(false), 500);
-    void write.then(() => finish(true));
+    try { void ad.show().catch(failed); } catch { failed(); }
+    navigate();
   }
 }

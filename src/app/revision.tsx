@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image } from "react-native";
+import { ActivityIndicator, AppState, Image } from "react-native";
 import { useRouter } from "expo-router";
 import {
   Action,
@@ -17,7 +17,6 @@ import { usesBackend } from "../services/analysis";
 import { CONSENT_TEXT } from "../../shared/analysis";
 import { QuotaStatus } from "../components/QuotaStatus";
 import { useAds } from "../ads/AdsProvider";
-import Constants from "expo-constants";
 
 export default function Review() {
   const app = useApp();
@@ -41,9 +40,10 @@ export default function Review() {
     try {
       const result = await app.analyze(accepted);
       if (result) {
-        if (!result.simulated || Constants.expoConfig?.extra?.ads?.production !== true)
-          void ads.controller.recordCompletion();
-        router.replace({ pathname: "/resultado", params: { id: result.id, fresh: '1' } });
+        ads.controller.showBeforeResult(
+          () => router.replace({ pathname: "/resultado", params: { id: result.id } }),
+          () => AppState.currentState === "active",
+        );
       }
     } catch {
       setError("No se pudo iniciar el análisis.");

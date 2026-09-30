@@ -1,5 +1,28 @@
 # Verificación de AclaraDoc
 
+## Intersticial antes de cada resultado — 30 de septiembre de 2026
+
+Sobre el commit `f43e83f` se trasladó el intersticial desde **Volver al inicio**
+a la transición posterior a cada análisis completado y anterior a la pantalla de
+resultado. Se eliminaron el umbral de tres análisis, la espera de cinco segundos,
+el intervalo de cinco minutos y su estado persistente. El SDK recibe la orden de
+mostrar antes del cambio de ruta; el resultado queda detrás del anuncio hasta su
+cierre. Sin consentimiento, inventario, primer plano o ante cualquier fallo, se
+navega directamente al resultado sin esperar a la publicidad.
+
+- `npm run verify` con `EXPO_NO_DOTENV=1`: aprobado; tipos frontend/backend/Worker,
+  ESLint, **30/30 pruebas de cliente y 64/64 de backend (94/94)** y dependencias
+  Expo. Las pruebas publicitarias comprueban la solicitud en resultados sucesivos,
+  recarga de inventario y continuación inmediata ante ausencia, caducidad, segundo
+  plano, fallo o pulsaciones repetidas.
+- `npm run export:all` con `EXPO_NO_DOTENV=1`: Android, iOS y web aprobados, con
+  ocho rutas estáticas. El aviso de iosAppId procede del plugin; el autolinking de
+  iOS continúa excluido y las alternativas iOS/web no cargan el SDK.
+- `npm run build --workspace backend`: aprobado. Expo Doctor: **21/21**.
+- No cambian plugin, IDs, versión, manifest ni código nativo respecto al APK
+  verificado abajo. Tampoco cambian backend, Workers, Gemini, cuotas, PDF,
+  `eas.json`, Render o Neon. No se hicieron llamadas externas, build EAS ni push.
+
 ## AdMob Android — 30 de septiembre de 2026
 
 Partida limpia: `f7cd660`. Integración Android con
